@@ -6,6 +6,7 @@
 int main() {
   Display * dpy;
   Window root;
+  XEvent ev;
 
   dpy = XOpenDisplay(NULL);
   if (dpy == NULL) {
@@ -15,6 +16,26 @@ int main() {
   }
 
   root = DefaultRootWindow(dpy);
+  XSelectInput(dpy, root, SubstructureNotifyMask);
+
+  for (;;) {
+    XNextEvent(dpy, &ev);
+    printf("Recieved an event\n");
+
+    switch (ev.type) {
+      case CreateNotify: 
+        printf("CreateNotify event: Window ID: %ld\n", ev.xcreatewindow.window);
+        break;
+      case DestroyNotify:
+        printf("DestroyNotify event: Window ID: %ld\n", ev.xdestroywindow.window);
+        break;
+      case ReparentNotify:
+        printf("ReparentNotify event: Window ID: %ld\n", ev.xreparent.window);
+        break;
+    default:
+      printf("Ignore event\n");
+    }
+  }
 
   XCloseDisplay(dpy);
 }

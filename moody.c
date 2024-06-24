@@ -2,8 +2,7 @@
 #include <X11/Xlib.h>
 #include <err.h>
 #include <stdlib.h>
-
-static const char TERM[] = "xterm";
+#include "config.h"
 
 static Display * dpy;
 static int scr;
@@ -18,7 +17,7 @@ int main() {
   scr = DefaultScreen(dpy);
   root = RootWindow(dpy, scr);
 
-  XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("t")), Mod1Mask, root,
+  XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym(KEY)), MODIFIER, root,
           True, GrabModeAsync, GrabModeAsync);
 
   for (;;) {

@@ -2,9 +2,9 @@
 
 ## Overview
 
-Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is to be blazingly fast, very minimal but still easy for new users to pick it up.
+Moody is a minimal and cozy tiling windows manager written in Go. Moody's goal is to be blazingly fast, very minimal but still easy for new users to pick it up.
 
-**Note**: Moody is just a side project to learn about C and tiling windows managers and is created to solve some problems I have with other windows manager.
+**Note**: Moody is just a side project to learn about X development and tiling windows managers.
 
 ### Features
 

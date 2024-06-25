@@ -14,7 +14,7 @@ void handle_map_request(XEvent ev, Display * dpy, int scr) {
   }
 
   // Resize window to fullscreen
-  unsigned int value_mask = CWX | CWY | CWWidth | CWHeight;
+  unsigned long value_mask = CWX | CWY | CWWidth | CWHeight;
   XWindowChanges changes;
   changes.x = 0;
   changes.y = 0;
@@ -22,10 +22,25 @@ void handle_map_request(XEvent ev, Display * dpy, int scr) {
   changes.height = DisplayHeight(dpy, scr);
 
   printf("Configuring window to fullscreen\n");
-  XConfigureWindow(dpy, ev.xmaprequest.window, value_mask, & changes);
+  XConfigureWindow(dpy, ev.xmaprequest.window, value_mask, &changes);
 
   printf("Mapping window\n");
   XMapWindow(dpy, ev.xmaprequest.window);
+}
+
+void handle_configure_request(XEvent ev, Display * dpy) {
+  unsigned long value_mask = CWX | CWY | CWWidth | CWHeight | CWBorderWidth | CWSibling | CWStackMode;
+  XWindowChanges changes;
+  changes.x = ev.xconfigurerequest.x;
+  changes.y = ev.xconfigurerequest.y;
+  changes.width = ev.xconfigurerequest.width;
+  changes.height = ev.xconfigurerequest.height;
+  changes.border_width = ev.xconfigurerequest.border_width;
+  changes.sibling = ev.xconfigurerequest.above;
+  changes.stack_mode = ev.xconfigurerequest.detail;
+
+  printf("Configuring window\n");
+  XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, &changes);
 }
 
 void run(Display * dpy, XEvent ev, int scr) {
@@ -34,18 +49,19 @@ void run(Display * dpy, XEvent ev, int scr) {
     XNextEvent(dpy, & ev);
 
     switch (ev.type) {
-    case MapRequest:
-      printf("Map Request\n");
-      handle_map_request(ev, dpy, scr);
-      break;
+      case MapRequest:
+        printf("Map Request\n");
+        handle_map_request(ev, dpy, scr);
+        break;
 
-    case KeyPress:
-      printf("Key Pressed: %d\n", ev.xkey.keycode);
-      break;
+      case ConfigureRequest:
+        printf("Configure Request");
+        handle_configure_request(ev, dpy);
+        break;
 
-    default:
-      printf("Other event type: %d\n", ev.type);
-      break;
+      default:
+        printf("Other event type: %d\n", ev.type);
+        break;
     }
   }
 }

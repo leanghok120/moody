@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define MODIFIER Mod4Mask // Super key
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 void handle_map_request(XEvent ev, Display * dpy, int scr) {
   XWindowAttributes attr;
   XGetWindowAttributes(dpy, ev.xmaprequest.window, & attr);
@@ -14,15 +17,15 @@ void handle_map_request(XEvent ev, Display * dpy, int scr) {
   }
 
   // Resize window to fullscreen
-  unsigned long value_mask = CWX | CWY | CWWidth | CWHeight;
-  XWindowChanges changes;
-  changes.x = 0;
-  changes.y = 0;
-  changes.width = DisplayWidth(dpy, scr);
-  changes.height = DisplayHeight(dpy, scr);
+  // unsigned long value_mask = CWX | CWY | CWWidth | CWHeight;
+  // XWindowChanges changes;
+  // changes.x = 0;
+  // changes.y = 0;
+  // changes.width = DisplayWidth(dpy, scr);
+  // changes.height = DisplayHeight(dpy, scr);
 
-  printf("Configuring window to fullscreen\n");
-  XConfigureWindow(dpy, ev.xmaprequest.window, value_mask, &changes);
+  // printf("Configuring window to fullscreen\n");
+  // XConfigureWindow(dpy, ev.xmaprequest.window, value_mask, &changes);
 
   printf("Mapping window\n");
   XMapWindow(dpy, ev.xmaprequest.window);
@@ -43,7 +46,7 @@ void handle_configure_request(XEvent ev, Display * dpy) {
   XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, &changes);
 }
 
-void run(Display * dpy, XEvent ev, int scr) {
+void run(Display * dpy, Window root, XEvent ev, int scr, XWindowAttributes attr, XButtonEvent start) {
   printf("Event loop started\n");
   for (;;) {
     XNextEvent(dpy, & ev);
@@ -53,12 +56,34 @@ void run(Display * dpy, XEvent ev, int scr) {
         printf("Map Request\n");
         handle_map_request(ev, dpy, scr);
         break;
-
       case ConfigureRequest:
-        printf("Configure Request");
+        printf("Configure Request\n");
         handle_configure_request(ev, dpy);
         break;
-
+      case ButtonPress:
+        if (ev.xbutton.subwindow != None) {
+          printf("Move windows") ;
+          XGrabPointer(dpy, ev.xbutton.subwindow, True,
+                  PointerMotionMask|ButtonReleaseMask, GrabModeAsync,
+                  GrabModeAsync, None, None, CurrentTime);
+          XGetWindowAttributes(dpy, ev.xbutton.subwindow, &attr);
+          start = ev.xbutton;
+        } 
+        break;
+      case MotionNotify:
+        int xdiff, ydiff;
+        while(XCheckTypedEvent(dpy, MotionNotify, &ev));
+        xdiff = ev.xbutton.x_root - start.x_root;
+        ydiff = ev.xbutton.y_root - start.y_root;
+        XMoveResizeWindow(dpy, ev.xmotion.window,
+            attr.x + (start.button==1 ? xdiff : 0),
+            attr.y + (start.button==1 ? ydiff : 0),
+            MAX(1, attr.width + (start.button==3 ? xdiff : 0)),
+            MAX(1, attr.height + (start.button==3 ? ydiff : 0)));
+        break;
+      case ButtonRelease:
+        XUngrabPointer(dpy, CurrentTime);
+        break;
       default:
         printf("Other event type: %d\n", ev.type);
         break;
@@ -80,6 +105,8 @@ int main() {
   int scr;
   Window root;
   XEvent ev;
+  XWindowAttributes attr;
+  XButtonEvent start;
 
   dpy = XOpenDisplay(NULL);
   if (dpy == NULL) {
@@ -88,11 +115,14 @@ int main() {
 
   scr = DefaultScreen(dpy);
   root = RootWindow(dpy, scr);
-
   XSetErrorHandler(handle_x_error);
   error_occurred = 0;
 
-  XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask);
+  XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask |
+               ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
+
+  XGrabButton(dpy, Button1, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
+          GrabModeAsync, None, None);
 
   XSync(dpy, False);
 
@@ -103,7 +133,7 @@ int main() {
 
   printf("Opened display\n");
 
-  run(dpy, ev, scr);
+  run(dpy, root, ev, scr, attr, start);
 
   XCloseDisplay(dpy);
   return 0;

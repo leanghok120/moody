@@ -9,7 +9,7 @@ Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is
 ### Features
 
 - [x] Basic Event Handling
-- [ ] Windows management
+- [ ] Windows management (In progress)
 - [ ] Windows tiling
 - [ ] Multiple workspaces
 - [ ] Keybindings

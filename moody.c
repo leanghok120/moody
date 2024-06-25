@@ -50,6 +50,15 @@ void run(Display * dpy, XEvent ev, int scr) {
     }
 }
 
+static int error_occurred = 0;
+int handle_x_error(Display *dpy, XErrorEvent *error_event) {
+    // Check if the error is a BadAccess error, which indicates another WM is running
+    if (error_event->error_code == BadAccess) {
+        error_occurred = 1;
+    }
+    return 0;
+}
+
 int main() {
     Display *dpy;
     int scr;
@@ -64,8 +73,17 @@ int main() {
     scr = DefaultScreen(dpy);
     root = RootWindow(dpy, scr);
 
-    // Select events to listen for on the root window
+    XSetErrorHandler(handle_x_error);
+    error_occurred = 0;
+
     XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask);
+
+    XSync(dpy, False);
+    
+    // Check if there is an error with XSelectInput (if there is then another wm is running)
+    if (error_occurred) {
+      errx(1, "Another window manager is running");
+    }
 
     run(dpy, ev, scr);
 

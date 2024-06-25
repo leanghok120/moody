@@ -18,7 +18,7 @@ Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is
 
 ### Installation
 
-Sadly, moody is still under development since there are alot of bugs and features yet be finished.
+Sadly, moody is still under development since there are alot of bugs and features yet to be finished.
 
 ### Inspiration
 

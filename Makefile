@@ -9,6 +9,9 @@ SRC = moody.c
 all:
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $(TARGET)
 
+build:
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $(TARGET)
+
 clean:
 	rm -rf $(TARGET)
 

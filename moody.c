@@ -4,8 +4,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MODIFIER Mod1Mask // alt key
+#define MODIFIER Mod1Mask // Alt key
 #define MAX(a, b)((a) > (b) ? (a) : (b))
+
+typedef struct {
+  Window window;
+  int start_x, start_y;
+  int x, y;
+  int width, height;
+  int is_resizing;
+}
+DragState;
 
 void handle_map_request(XEvent ev, Display * dpy, int scr) {
   XWindowAttributes attr;
@@ -15,17 +24,6 @@ void handle_map_request(XEvent ev, Display * dpy, int scr) {
     printf("Override redirect, skipping window\n");
     return;
   }
-
-  // Resize window to fullscreen
-  // unsigned long value_mask = CWX | CWY | CWWidth | CWHeight;
-  // XWindowChanges changes;
-  // changes.x = 0;
-  // changes.y = 0;
-  // changes.width = DisplayWidth(dpy, scr);
-  // changes.height = DisplayHeight(dpy, scr);
-
-  // printf("Configuring window to fullscreen\n");
-  // XConfigureWindow(dpy, ev.xmaprequest.window, value_mask, &changes);
 
   printf("Mapping window\n");
   XMapWindow(dpy, ev.xmaprequest.window);
@@ -46,8 +44,59 @@ void handle_configure_request(XEvent ev, Display * dpy) {
   XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, & changes);
 }
 
-void run(Display * dpy, Window root, XEvent ev, int scr, XWindowAttributes attr, XButtonEvent start) {
-  printf("Event loop started\n");
+void start_drag(Display * dpy, XEvent ev, DragState * drag) {
+  if (ev.xbutton.subwindow != None) {
+    drag -> window = ev.xbutton.subwindow;
+    drag -> start_x = ev.xbutton.x_root;
+    drag -> start_y = ev.xbutton.y_root;
+
+    XWindowAttributes attr;
+    XGetWindowAttributes(dpy, drag -> window, & attr);
+    drag -> x = attr.x;
+    drag -> y = attr.y;
+    drag -> width = attr.width;
+    drag -> height = attr.height;
+    drag -> is_resizing = (ev.xbutton.button == Button3);
+
+    XGrabPointer(dpy, drag -> window, True,
+      PointerMotionMask | ButtonReleaseMask, GrabModeAsync,
+      GrabModeAsync, None, None, CurrentTime);
+
+    printf("Starting %s on window 0x%lx\n", drag -> is_resizing ? "resize" : "move", drag -> window);
+  }
+}
+
+void update_drag(Display * dpy, XEvent ev, DragState * drag) {
+  if (drag -> window != None) {
+    int xdiff = ev.xmotion.x_root - drag -> start_x;
+    int ydiff = ev.xmotion.y_root - drag -> start_y;
+
+    if (drag -> is_resizing) {
+      XMoveResizeWindow(dpy, drag -> window,
+        drag -> x, drag -> y,
+        MAX(1, drag -> width + xdiff),
+        MAX(1, drag -> height + ydiff));
+    } else {
+      XMoveWindow(dpy, drag -> window,
+        drag -> x + xdiff,
+        drag -> y + ydiff);
+    }
+  }
+}
+
+void end_drag(Display * dpy, DragState * drag) {
+  if (drag -> window != None) {
+    XUngrabPointer(dpy, CurrentTime);
+    drag -> window = None;
+    printf("Drag ended\n");
+  }
+}
+
+void handle_events(Display * dpy, Window root, int scr) {
+  DragState drag = {
+    0
+  };
+  XEvent ev;
   for (;;) {
     XNextEvent(dpy, & ev);
 
@@ -60,29 +109,17 @@ void run(Display * dpy, Window root, XEvent ev, int scr, XWindowAttributes attr,
       printf("Configure Request\n");
       handle_configure_request(ev, dpy);
       break;
-    // Moving and Resizing windows
     case ButtonPress:
-      if (ev.xbutton.subwindow != None) {
-        XGrabPointer(dpy, ev.xbutton.subwindow, True,
-          PointerMotionMask | ButtonReleaseMask, GrabModeAsync,
-          GrabModeAsync, None, None, CurrentTime);
-        XGetWindowAttributes(dpy, ev.xbutton.subwindow, & attr);
-        start = ev.xbutton;
+      if ((ev.xbutton.state & MODIFIER) && (ev.xbutton.button == Button1 || ev.xbutton.button == Button3)) {
+        start_drag(dpy, ev, & drag);
       }
       break;
     case MotionNotify:
-      int xdiff, ydiff;
       while (XCheckTypedEvent(dpy, MotionNotify, & ev));
-      xdiff = ev.xbutton.x_root - start.x_root;
-      ydiff = ev.xbutton.y_root - start.y_root;
-      XMoveResizeWindow(dpy, ev.xmotion.window,
-        attr.x + (start.button == 1 ? xdiff : 0),
-        attr.y + (start.button == 1 ? ydiff : 0),
-        MAX(1, attr.width + (start.button == 3 ? xdiff : 0)),
-        MAX(1, attr.height + (start.button == 3 ? ydiff : 0)));
+      update_drag(dpy, ev, & drag);
       break;
     case ButtonRelease:
-      XUngrabPointer(dpy, CurrentTime);
+      end_drag(dpy, & drag);
       break;
     default:
       printf("Other event type: %d\n", ev.type);
@@ -92,8 +129,8 @@ void run(Display * dpy, Window root, XEvent ev, int scr, XWindowAttributes attr,
 }
 
 static int error_occurred = 0;
+
 int handle_x_error(Display * dpy, XErrorEvent * error_event) {
-  // Check if the error is a BadAccess error, which indicates another WM is running
   if (error_event -> error_code == BadAccess) {
     error_occurred = 1;
   }
@@ -104,9 +141,6 @@ int main() {
   Display * dpy;
   int scr;
   Window root;
-  XEvent ev;
-  XWindowAttributes attr;
-  XButtonEvent start;
 
   dpy = XOpenDisplay(NULL);
   if (dpy == NULL) {
@@ -128,14 +162,13 @@ int main() {
 
   XSync(dpy, False);
 
-  // Check if there is an error with XSelectInput (if there is then another wm is running)
   if (error_occurred) {
     errx(1, "Another window manager is running");
   }
 
   printf("Opened display\n");
 
-  run(dpy, root, ev, scr, attr, start);
+  handle_events(dpy, root, scr);
 
   XCloseDisplay(dpy);
   return 0;

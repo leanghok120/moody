@@ -25,25 +25,34 @@ void handle_map_request(XEvent ev, Display * dpy) {
     return;
   }
 
-  XRaiseWindow(dpy, ev.xmaprequest.window);
-  printf("Mapping and raising window 0x%lx\n", ev.xmaprequest.window);
+  printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
   XMapWindow(dpy, ev.xmaprequest.window);
-  XSetInputFocus(dpy, ev.xmaprequest.window, RevertToPointerRoot, CurrentTime);
+
+  int screen_width = DisplayWidth(dpy, DefaultScreen(dpy));
+  int screen_height = DisplayHeight(dpy, DefaultScreen(dpy));
+  if (attr.x + attr.width > screen_width || attr.y + attr.height > screen_height) {
+    XMoveWindow(dpy, ev.xmaprequest.window, 50, 50);
+    printf("Window moved to (0,0) to ensure visibility\n");
+  }
+
+  XRaiseWindow(dpy, ev.xmaprequest.window);
 }
 
-void handle_configure_request(XEvent ev, Display * dpy) {
-  unsigned long value_mask = CWX | CWY | CWWidth | CWHeight | CWBorderWidth | CWSibling | CWStackMode;
-  XWindowChanges changes;
-  changes.x = ev.xconfigurerequest.x;
-  changes.y = ev.xconfigurerequest.y;
-  changes.width = ev.xconfigurerequest.width;
-  changes.height = ev.xconfigurerequest.height;
-  changes.border_width = ev.xconfigurerequest.border_width;
-  changes.sibling = ev.xconfigurerequest.above;
-  changes.stack_mode = ev.xconfigurerequest.detail;
+void handle_configure_request(XEvent ev, Display *dpy) {
+    unsigned long value_mask = CWX | CWY | CWWidth | CWHeight | CWBorderWidth;
+    XWindowChanges changes;
+    changes.x = ev.xconfigurerequest.x;
+    changes.y = ev.xconfigurerequest.y;
+    changes.width = ev.xconfigurerequest.width;
+    changes.height = ev.xconfigurerequest.height;
+    changes.border_width = ev.xconfigurerequest.border_width;
 
-  printf("Configuring window 0x%lx\n", ev.xconfigurerequest.window);
-  XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, & changes);
+    printf("Configuring window 0x%lx to (%d, %d, %d, %d)\n",
+           ev.xconfigurerequest.window,
+           changes.x, changes.y,
+           changes.width, changes.height);
+
+    XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, &changes);
 }
 
 void start_drag(Display * dpy, XEvent ev, DragState * drag) {
@@ -117,6 +126,10 @@ void handle_events(Display * dpy, Window root, int scr) {
       printf("Configure Request\n");
       handle_configure_request(ev, dpy);
       break;
+    case Expose:
+      if (ev.xexpose.count == 0) {
+        XClearWindow(dpy, ev.xexpose.window); 
+      }
     case ButtonPress:
       if (ev.xbutton.subwindow != None) {
         // Raise window on left click (Button1) without modifier

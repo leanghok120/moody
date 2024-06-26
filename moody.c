@@ -16,7 +16,7 @@ typedef struct {
 }
 DragState;
 
-void handle_map_request(XEvent ev, Display * dpy, int scr) {
+void handle_map_request(XEvent ev, Display * dpy) {
   XWindowAttributes attr;
   XGetWindowAttributes(dpy, ev.xmaprequest.window, & attr);
 
@@ -25,8 +25,10 @@ void handle_map_request(XEvent ev, Display * dpy, int scr) {
     return;
   }
 
-  printf("Mapping window\n");
+  XRaiseWindow(dpy, ev.xmaprequest.window);
+  printf("Mapping and raising window 0x%lx\n", ev.xmaprequest.window);
   XMapWindow(dpy, ev.xmaprequest.window);
+  XSetInputFocus(dpy, ev.xmaprequest.window, RevertToPointerRoot, CurrentTime);
 }
 
 void handle_configure_request(XEvent ev, Display * dpy) {
@@ -40,7 +42,7 @@ void handle_configure_request(XEvent ev, Display * dpy) {
   changes.sibling = ev.xconfigurerequest.above;
   changes.stack_mode = ev.xconfigurerequest.detail;
 
-  printf("Configuring window\n");
+  printf("Configuring window 0x%lx\n", ev.xconfigurerequest.window);
   XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, & changes);
 }
 
@@ -92,6 +94,12 @@ void end_drag(Display * dpy, DragState * drag) {
   }
 }
 
+void raise_window(Display * dpy, Window window) {
+  XRaiseWindow(dpy, window);
+  XSetInputFocus(dpy, window, RevertToPointerRoot, CurrentTime);
+  printf("Window 0x%lx raised and focused\n", window);
+}
+
 void handle_events(Display * dpy, Window root, int scr) {
   DragState drag = {
     0
@@ -103,15 +111,22 @@ void handle_events(Display * dpy, Window root, int scr) {
     switch (ev.type) {
     case MapRequest:
       printf("Map Request\n");
-      handle_map_request(ev, dpy, scr);
+      handle_map_request(ev, dpy);
       break;
     case ConfigureRequest:
       printf("Configure Request\n");
       handle_configure_request(ev, dpy);
       break;
     case ButtonPress:
-      if ((ev.xbutton.state & MODIFIER) && (ev.xbutton.button == Button1 || ev.xbutton.button == Button3)) {
-        start_drag(dpy, ev, & drag);
+      if (ev.xbutton.subwindow != None) {
+        // Raise window on left click (Button1) without modifier
+        if (ev.xbutton.button == Button1 && (ev.xbutton.state & MODIFIER) == 0) {
+          raise_window(dpy, ev.xbutton.subwindow);
+        }
+        // Start dragging/resizing if left-click (Button1) or right-click (Button3) with modifier
+        if ((ev.xbutton.state & MODIFIER) && (ev.xbutton.button == Button1 || ev.xbutton.button == Button3)) {
+          start_drag(dpy, ev, & drag);
+        }
       }
       break;
     case MotionNotify:
@@ -155,9 +170,14 @@ int main() {
   XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask |
     ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
 
+  // Grab left-click (Button1) and right-click (Button3) with modifier for moving/resizing
   XGrabButton(dpy, Button1, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
     GrabModeAsync, None, None);
   XGrabButton(dpy, Button3, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
+    GrabModeAsync, None, None);
+
+  // Grab left-click (Button1) without any modifier for raising the window
+  XGrabButton(dpy, Button1, AnyModifier, root, True, ButtonPressMask, GrabModeAsync,
     GrabModeAsync, None, None);
 
   XSync(dpy, False);

@@ -1,4 +1,13 @@
-
 # Rofi
 alt + space
   rofi -show drun
+
+# Terminal
+alt + Return
+  xterm
+
+# Moody
+# Close window
+alt + q
+  xdotool getwindowfocus windowkill
+

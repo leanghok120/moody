@@ -34,8 +34,6 @@ void handle_map_request(XEvent ev, Display * dpy) {
     XMoveWindow(dpy, ev.xmaprequest.window, 50, 50);
     printf("Window moved to (0,0) to ensure visibility\n");
   }
-
-  XRaiseWindow(dpy, ev.xmaprequest.window);
 }
 
 void handle_configure_request(XEvent ev, Display *dpy) {
@@ -121,6 +119,7 @@ void handle_events(Display * dpy, Window root, int scr) {
     case MapRequest:
       printf("Map Request\n");
       handle_map_request(ev, dpy);
+      raise_window(dpy, ev.xmaprequest.window);
       break;
     case ConfigureRequest:
       printf("Configure Request\n");

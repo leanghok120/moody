@@ -1,5 +1,4 @@
 #!/bin/bash
 
 # Starts keybinding daemon
-sxhkd
-
+sxhkd &

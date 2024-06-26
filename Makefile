@@ -19,5 +19,5 @@ run:
 	./preview.sh
 
 install:
-	cp moody /usr/bin/
+	cp ./$(TARGET) /usr/bin/
 	chmod 755 /usr/bin/moody

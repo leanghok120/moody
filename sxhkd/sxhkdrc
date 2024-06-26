@@ -10,4 +10,3 @@ alt + Return
 # Close window
 alt + q
   xdotool getwindowfocus windowkill
-

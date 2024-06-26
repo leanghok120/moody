@@ -1,0 +1,4 @@
+
+# Rofi
+alt + space
+  rofi -show drun

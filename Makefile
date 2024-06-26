@@ -20,4 +20,5 @@ run:
 
 install: all
 	cp moody /usr/bin/
+	cp ./sxhkd/ ~/.config/ -r
 	chmod 755 /usr/bin/moody

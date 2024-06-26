@@ -170,13 +170,11 @@ int main() {
   XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask |
     ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
 
-  // Grab left-click (Button1) and right-click (Button3) with modifier for moving/resizing
   XGrabButton(dpy, Button1, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
     GrabModeAsync, None, None);
   XGrabButton(dpy, Button3, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
     GrabModeAsync, None, None);
 
-  // Grab left-click (Button1) without any modifier for raising the window
   XGrabButton(dpy, Button1, AnyModifier, root, True, ButtonPressMask, GrabModeAsync,
     GrabModeAsync, None, None);
 

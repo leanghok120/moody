@@ -17,3 +17,7 @@ clean:
 
 run:
 	./preview.sh
+
+install: all
+	cp moody /usr/bin/
+	chmod 755 /usr/bin/moody

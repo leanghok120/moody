@@ -5,8 +5,3 @@ alt + space
 # Terminal
 alt + Return
   xterm
-
-# Moody
-# Close window
-alt + q
-  xdotool getwindowfocus windowkill

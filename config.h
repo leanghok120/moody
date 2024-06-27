@@ -11,4 +11,9 @@
 #define MOVE_BUTTON Button1
 #define RESIZE_BUTTON Button3
 
+// Moody Keybindings
+
+// Close current window
+#define KILL_KEY XK_q // sets "q" as the letter for killing the current window
+
 #endif

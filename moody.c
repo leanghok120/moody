@@ -1,5 +1,7 @@
 #include <X11/X.h>
 #include <X11/Xlib.h>
+#include <X11/keysym.h>
+#include <X11/XKBlib.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -107,6 +109,24 @@ void raise_window(Display * dpy, Window window) {
   printf("Window 0x%lx raised and focused\n", window);
 }
 
+void kill_focused_window(Display * dpy) {
+  Window root, parent;
+  Window * children;
+  unsigned int nchildren;
+  Window focused;
+  int revert_to;
+
+  // Get focused window
+  XGetInputFocus(dpy, &focused, &revert_to);
+
+  if (focused != None && focused != PointerRoot) {
+    XDestroyWindow(dpy, focused);
+    printf("Killed window 0x%lx\n", focused);
+  } else {
+    printf("No window is focused\n");
+  }
+}
+
 void handle_events(Display * dpy, Window root, int scr) {
   DragState drag = {
     0
@@ -131,15 +151,15 @@ void handle_events(Display * dpy, Window root, int scr) {
       }
     case ButtonPress:
       if (ev.xbutton.subwindow != None) {
-        // Raise window on left click (Button1) without modifier
-        if (ev.xbutton.button == Button1 && (ev.xbutton.state & MODIFIER) == 0) {
-          raise_window(dpy, ev.xbutton.subwindow);
-        }
-        // Start dragging/resizing if left-click (Button1) or right-click (Button3) with modifier
-        if ((ev.xbutton.state & MODIFIER) && (ev.xbutton.button == Button1 || ev.xbutton.button == Button3)) {
+        // Resizing and Moving
+        if ((ev.xbutton.state & MODIFIER) && (ev.xbutton.button == MOVE_BUTTON || ev.xbutton.button == RESIZE_BUTTON)) {
           start_drag(dpy, ev, & drag);
         }
       }
+      break;
+    case EnterNotify:
+      printf("EnterNotify event received for window 0x%lx\n", ev.xcrossing.window);
+      raise_window(dpy, ev.xcrossing.window);
       break;
     case MotionNotify:
       while (XCheckTypedEvent(dpy, MotionNotify, & ev));
@@ -147,6 +167,12 @@ void handle_events(Display * dpy, Window root, int scr) {
       break;
     case ButtonRelease:
       end_drag(dpy, & drag);
+      break;
+    case KeyPress:
+      if (ev.xkey.keycode == XKeysymToKeycode(dpy, KILL_KEY) && (ev.xkey.state & MODIFIER)) {
+        printf("Modifier + q pressed, killing window\n");
+        kill_focused_window(dpy);
+      }
       break;
     default:
       printf("Other event type: %d\n", ev.type);
@@ -180,15 +206,18 @@ int main() {
   error_occurred = 0;
 
   XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask |
-    ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
+    ButtonPressMask | ButtonReleaseMask | PointerMotionMask | KeyPressMask | EnterWindowMask);
 
+  // Grab Moving and resizing keybinds
   XGrabButton(dpy, MOVE_BUTTON, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
     GrabModeAsync, None, None);
   XGrabButton(dpy, RESIZE_BUTTON, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
     GrabModeAsync, None, None);
 
-  XGrabButton(dpy, Button1, AnyModifier, root, True, ButtonPressMask, GrabModeAsync,
-    GrabModeAsync, None, None);
+  // Grab Windows keybinds
+  // kill focused window
+  XGrabKey(dpy, XKeysymToKeycode(dpy, KILL_KEY), MODIFIER, root, True,
+           GrabModeAsync, GrabModeAsync);
 
   XSync(dpy, False);
 

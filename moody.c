@@ -3,8 +3,8 @@
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "config.h"
 
-#define MODIFIER Mod1Mask // Alt key
 #define MAX(a, b)((a) > (b) ? (a) : (b))
 
 typedef struct {
@@ -32,7 +32,7 @@ void handle_map_request(XEvent ev, Display * dpy) {
   int screen_height = DisplayHeight(dpy, DefaultScreen(dpy));
   if (attr.x + attr.width > screen_width || attr.y + attr.height > screen_height) {
     XMoveWindow(dpy, ev.xmaprequest.window, 50, 50);
-    printf("Window moved to (0,0) to ensure visibility\n");
+    printf("Window moved to (50, 50) to ensure visibility\n");
   }
 }
 
@@ -182,9 +182,9 @@ int main() {
   XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask |
     ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
 
-  XGrabButton(dpy, Button1, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
+  XGrabButton(dpy, MOVE_BUTTON, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
     GrabModeAsync, None, None);
-  XGrabButton(dpy, Button3, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
+  XGrabButton(dpy, RESIZE_BUTTON, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
     GrabModeAsync, None, None);
 
   XGrabButton(dpy, Button1, AnyModifier, root, True, ButtonPressMask, GrabModeAsync,

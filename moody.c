@@ -18,6 +18,7 @@ typedef struct {
 }
 DragState;
 
+// Map window and Move window to 50, 50
 void handle_map_request(XEvent ev, Display * dpy) {
   XWindowAttributes attr;
   XGetWindowAttributes(dpy, ev.xmaprequest.window, & attr);
@@ -25,6 +26,11 @@ void handle_map_request(XEvent ev, Display * dpy) {
   if (attr.override_redirect) {
     printf("Override redirect, skipping window\n");
     return;
+  }
+
+  if (attr.width <= 1 || attr.height <= 1) {
+    // Sets window to default width and height
+    XResizeWindow(dpy, ev.xmaprequest.window, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
   }
 
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
@@ -56,6 +62,7 @@ void handle_configure_request(XEvent ev, Display *dpy) {
     XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, &changes);
 }
 
+// Handle moving and resizing
 void start_drag(Display * dpy, XEvent ev, DragState * drag) {
   if (ev.xbutton.subwindow != None) {
     drag -> window = ev.xbutton.subwindow;
@@ -104,6 +111,7 @@ void end_drag(Display * dpy, DragState * drag) {
   }
 }
 
+// Focus window
 void raise_window(Display * dpy, Window window) {
   XRaiseWindow(dpy, window);
   XSetInputFocus(dpy, window, RevertToPointerRoot, CurrentTime);

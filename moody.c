@@ -28,6 +28,7 @@ void handle_map_request(XEvent ev, Display * dpy) {
   }
 
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
+  XSelectInput(dpy, ev.xmaprequest.window, EnterWindowMask | FocusChangeMask | StructureNotifyMask);
   XMapWindow(dpy, ev.xmaprequest.window);
 
   int screen_width = DisplayWidth(dpy, DefaultScreen(dpy));
@@ -67,7 +68,7 @@ void start_drag(Display * dpy, XEvent ev, DragState * drag) {
     drag -> y = attr.y;
     drag -> width = attr.width;
     drag -> height = attr.height;
-    drag -> is_resizing = (ev.xbutton.button == Button3);
+    drag -> is_resizing = (ev.xbutton.button == RESIZE_BUTTON);
 
     XGrabPointer(dpy, drag -> window, True,
       PointerMotionMask | ButtonReleaseMask, GrabModeAsync,
@@ -149,6 +150,12 @@ void handle_events(Display * dpy, Window root, int scr) {
       if (ev.xexpose.count == 0) {
         XClearWindow(dpy, ev.xexpose.window); 
       }
+    case EnterNotify:
+      if (ev.xcrossing.window != root) {
+        printf("Mouse entered window 0x%lx, raising and focusing it\n", ev.xcrossing.window);
+        raise_window(dpy, ev.xcrossing.window);
+      }
+      break;
     case ButtonPress:
       if (ev.xbutton.subwindow != None) {
         // Resizing and Moving
@@ -156,10 +163,6 @@ void handle_events(Display * dpy, Window root, int scr) {
           start_drag(dpy, ev, & drag);
         }
       }
-      break;
-    case EnterNotify:
-      printf("EnterNotify event received for window 0x%lx\n", ev.xcrossing.window);
-      raise_window(dpy, ev.xcrossing.window);
       break;
     case MotionNotify:
       while (XCheckTypedEvent(dpy, MotionNotify, & ev));
@@ -169,6 +172,7 @@ void handle_events(Display * dpy, Window root, int scr) {
       end_drag(dpy, & drag);
       break;
     case KeyPress:
+      // mod + kill-key
       if (ev.xkey.keycode == XKeysymToKeycode(dpy, KILL_KEY) && (ev.xkey.state & MODIFIER)) {
         printf("Modifier + q pressed, killing window\n");
         kill_focused_window(dpy);

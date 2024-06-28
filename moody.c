@@ -11,6 +11,7 @@
 #include "config.h"
 
 #define MAX(a, b)((a) > (b) ? (a) : (b))
+#define MAX_WINDOWS 500
 
 typedef struct {
   Window window;
@@ -21,12 +22,91 @@ typedef struct {
 }
 DragState;
 
+typedef struct {
+    Window window;
+    int x, y;
+    int width, height;
+} WindowInfo;
+
+typedef struct {
+    WindowInfo windows[MAX_WINDOWS];
+    int count;
+    Window master; // Store the master window
+} TilingLayout;
+
+TilingLayout layout;
+
+// Tiling functions
+void init_layout() {
+  layout.count = 0;
+  layout.master = None;
+}
+
+void add_window_to_layout(Window window) {
+  if (layout.count < MAX_WINDOWS) {
+    // Add window to layout
+    layout.windows[layout.count].window = window; 
+    layout.count++;
+    if (layout.master == None) {
+      // Add window to master if it's the only window
+      layout.master = window; 
+    }
+  }
+}
+
+void remove_window_from_layout(Window window) {
+  int found = 0;
+  for (int i = 0; layout.count; i++) {
+    if (layout.windows[i].window == window) {
+      found = 1;
+    }
+    if (found && i < layout.count - 1) {
+      layout.windows[i] = layout.windows[i + 1]; 
+    }
+    if (found) {
+      layout.count--;
+      if (layout.master == window) {
+        layout.master = (layout.count > 0) ? layout.windows[0].window : None; 
+      }
+    }
+  }
+}
+
+void arrange_window(Display * dpy, int screen_width, int screen_height) {
+  if (layout.count == 0) return;
+
+  int master_width = screen_width / 2;
+  int stack_width = screen_width - master_width;
+  int stack_height = screen_height / MAX(1, layout.count - 1);
+
+  for (int i = 0; i < layout.count; i++) {
+    if (layout.windows[i].window == layout.master) {
+      layout.windows[i].x = 0; 
+      layout.windows[i].y = 0; 
+      layout.windows[i].width = master_width;
+      layout.windows[i].height = screen_height;
+    } else {
+      layout.windows[i].x = master_width;
+      layout.windows[i].y = stack_height * (i - 1);
+      layout.windows[i].width = stack_width;
+      layout.windows[i].height = stack_height;
+    }
+  }
+}
+
+void apply_layout(Display * dpy) {
+  for (int i = 0; i < layout.count; i++) {
+    XMoveResizeWindow(dpy, layout.windows[i].window, layout.windows[i].x,
+                      layout.windows[i].y, layout.windows[i].width, layout.windows[i].height); 
+  }
+}
+
 // Set Cursor font to avoid no cursor
 void set_default_cursor(Display * dpy, Window root) {
   Cursor cursor;
-  cursor = XCreateFontCursor(dpy, XC_left_ptr); // Change `XC_left_ptr` to the desired cursor shape
+  cursor = XCreateFontCursor(dpy, XC_left_ptr);
   XDefineCursor(dpy, root, cursor);
-  XFlush(dpy); // Apply the change immediately
+  XFlush(dpy);
 }
 
 // Set wm name for fetches to use
@@ -56,13 +136,15 @@ void handle_map_request(XEvent ev, Display * dpy) {
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
   XSelectInput(dpy, ev.xmaprequest.window, EnterWindowMask | FocusChangeMask | StructureNotifyMask);
   XMapWindow(dpy, ev.xmaprequest.window);
+  add_window_to_layout(ev.xmaprequest.window);
+  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+  apply_layout(dpy);
+}
 
-  int screen_width = DisplayWidth(dpy, DefaultScreen(dpy));
-  int screen_height = DisplayHeight(dpy, DefaultScreen(dpy));
-  if (attr.x + attr.width > screen_width || attr.y + attr.height > screen_height) {
-    XMoveWindow(dpy, ev.xmaprequest.window, 50, 50);
-    printf("Window moved to (50, 50) to ensure visibility\n");
-  }
+void handle_unmap_request(XEvent ev, Display * dpy) {
+  remove_window_from_layout(ev.xunmap.window);
+  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+  apply_layout(dpy);
 }
 
 void handle_configure_request(XEvent ev, Display * dpy) {
@@ -78,6 +160,9 @@ void handle_configure_request(XEvent ev, Display * dpy) {
     ev.xconfigurerequest.window,
     changes.x, changes.y,
     changes.width, changes.height);
+
+  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+  apply_layout(dpy);
 
   XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, & changes);
 }
@@ -170,6 +255,9 @@ void handle_events(Display * dpy, Window root, int scr) {
       handle_map_request(ev, dpy);
       raise_window(dpy, ev.xmaprequest.window);
       break;
+    case UnmapNotify:
+      printf("Unmap Notify\n");
+      handle_unmap_request(ev, dpy);
     case ConfigureRequest:
       printf("Configure Request\n");
       handle_configure_request(ev, dpy);

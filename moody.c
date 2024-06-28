@@ -240,6 +240,8 @@ int main() {
   XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask |
     ButtonPressMask | ButtonReleaseMask | PointerMotionMask | KeyPressMask | EnterWindowMask);
 
+  system("/usr/bin/autostart.sh &");
+
   // Grab Moving and resizing keybinds
   XGrabButton(dpy, MOVE_BUTTON, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
     GrabModeAsync, None, None);
@@ -259,7 +261,6 @@ int main() {
 
   printf("Opened display\n");
 
-  system("./autostart.sh");
   set_default_cursor(dpy, root);
   set_window_manager_name(dpy, root, WM_NAME);
 

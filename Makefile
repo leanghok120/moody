@@ -20,4 +20,6 @@ run:
 
 install:
 	cp ./$(TARGET) /usr/bin/
+	cp ./autostart.sh /usr/bin/
 	chmod 755 /usr/bin/moody
+	chmod 755 /usr/bin/autostart.sh

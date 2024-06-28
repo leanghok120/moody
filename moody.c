@@ -3,9 +3,11 @@
 #include <X11/keysym.h>
 #include <X11/XKBlib.h>
 #include <X11/cursorfont.h>
+#include <X11/Xatom.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "config.h"
 
 #define MAX(a, b)((a) > (b) ? (a) : (b))
@@ -19,12 +21,21 @@ typedef struct {
 }
 DragState;
 
-// Cursor font to avoid no cursor
-void set_default_cursor(Display *dpy, Window root) {
-    Cursor cursor;
-    cursor = XCreateFontCursor(dpy, XC_left_ptr); // Change `XC_left_ptr` to the desired cursor shape
-    XDefineCursor(dpy, root, cursor);
-    XFlush(dpy); // Apply the change immediately
+// Set Cursor font to avoid no cursor
+void set_default_cursor(Display * dpy, Window root) {
+  Cursor cursor;
+  cursor = XCreateFontCursor(dpy, XC_left_ptr); // Change `XC_left_ptr` to the desired cursor shape
+  XDefineCursor(dpy, root, cursor);
+  XFlush(dpy); // Apply the change immediately
+}
+
+// Set wm name for fetches to use
+void set_window_manager_name(Display * dpy, Window root,
+  const char * wm_name) {
+  Atom wmNameAtom = XInternAtom(dpy, "_NET_WM_NAME", False);
+  XChangeProperty(dpy, root, wmNameAtom, XA_STRING, 8, PropModeReplace,
+    (unsigned char * ) wm_name, strlen(wm_name));
+  XFlush(dpy);
 }
 
 // Map window and Move window to 50, 50
@@ -54,21 +65,21 @@ void handle_map_request(XEvent ev, Display * dpy) {
   }
 }
 
-void handle_configure_request(XEvent ev, Display *dpy) {
-    unsigned long value_mask = CWX | CWY | CWWidth | CWHeight | CWBorderWidth;
-    XWindowChanges changes;
-    changes.x = ev.xconfigurerequest.x;
-    changes.y = ev.xconfigurerequest.y;
-    changes.width = ev.xconfigurerequest.width;
-    changes.height = ev.xconfigurerequest.height;
-    changes.border_width = ev.xconfigurerequest.border_width;
+void handle_configure_request(XEvent ev, Display * dpy) {
+  unsigned long value_mask = CWX | CWY | CWWidth | CWHeight | CWBorderWidth;
+  XWindowChanges changes;
+  changes.x = ev.xconfigurerequest.x;
+  changes.y = ev.xconfigurerequest.y;
+  changes.width = ev.xconfigurerequest.width;
+  changes.height = ev.xconfigurerequest.height;
+  changes.border_width = ev.xconfigurerequest.border_width;
 
-    printf("Configuring window 0x%lx to (%d, %d, %d, %d)\n",
-           ev.xconfigurerequest.window,
-           changes.x, changes.y,
-           changes.width, changes.height);
+  printf("Configuring window 0x%lx to (%d, %d, %d, %d)\n",
+    ev.xconfigurerequest.window,
+    changes.x, changes.y,
+    changes.width, changes.height);
 
-    XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, &changes);
+  XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, & changes);
 }
 
 // Handle moving and resizing
@@ -135,7 +146,7 @@ void kill_focused_window(Display * dpy) {
   int revert_to;
 
   // Get focused window
-  XGetInputFocus(dpy, &focused, &revert_to);
+  XGetInputFocus(dpy, & focused, & revert_to);
 
   if (focused != None && focused != PointerRoot) {
     XDestroyWindow(dpy, focused);
@@ -165,7 +176,7 @@ void handle_events(Display * dpy, Window root, int scr) {
       break;
     case Expose:
       if (ev.xexpose.count == 0) {
-        XClearWindow(dpy, ev.xexpose.window); 
+        XClearWindow(dpy, ev.xexpose.window);
       }
     case EnterNotify:
       if (ev.xcrossing.window != root) {
@@ -238,7 +249,7 @@ int main() {
   // Grab Windows keybinds
   // kill focused window
   XGrabKey(dpy, XKeysymToKeycode(dpy, KILL_KEY), MODIFIER, root, True,
-           GrabModeAsync, GrabModeAsync);
+    GrabModeAsync, GrabModeAsync);
 
   XSync(dpy, False);
 
@@ -249,6 +260,7 @@ int main() {
   printf("Opened display\n");
 
   set_default_cursor(dpy, root);
+  set_window_manager_name(dpy, root, WM_NAME);
 
   handle_events(dpy, root, scr);
 

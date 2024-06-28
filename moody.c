@@ -259,6 +259,7 @@ int main() {
 
   printf("Opened display\n");
 
+  system("./autostart.sh");
   set_default_cursor(dpy, root);
   set_window_manager_name(dpy, root, WM_NAME);
 

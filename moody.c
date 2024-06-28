@@ -2,6 +2,7 @@
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <X11/XKBlib.h>
+#include <X11/cursorfont.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +18,14 @@ typedef struct {
   int is_resizing;
 }
 DragState;
+
+// Cursor font to avoid no cursor
+void set_default_cursor(Display *dpy, Window root) {
+    Cursor cursor;
+    cursor = XCreateFontCursor(dpy, XC_left_ptr); // Change `XC_left_ptr` to the desired cursor shape
+    XDefineCursor(dpy, root, cursor);
+    XFlush(dpy); // Apply the change immediately
+}
 
 // Map window and Move window to 50, 50
 void handle_map_request(XEvent ev, Display * dpy) {
@@ -238,6 +247,8 @@ int main() {
   }
 
   printf("Opened display\n");
+
+  set_default_cursor(dpy, root);
 
   handle_events(dpy, root, scr);
 

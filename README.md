@@ -18,6 +18,9 @@ Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is
 - [x] Configurations
 - [x] Focus on hover
 - [ ] Small improvements
+    - [ ] EMWH stuff
+    - [ ] Focus other window after killed current window
+    - [ ] Config reloading
 - [ ] Installation
 
 ### Installation

@@ -97,14 +97,13 @@ void remove_window_from_layout(Window window) {
 void arrange_window(Display * dpy, int screen_width, int screen_height) {
   if (layout.count == 0) return;
 
+  // Check if layout needs to be updated
   if (layout.count == 1) {
-    // One window, Tile it to fullscreen
     layout.windows[0].x = 0;
     layout.windows[0].y = 0;
     layout.windows[0].width = screen_width;
     layout.windows[0].height = screen_height;
   } else {
-    // Master layout
     int master_width = screen_width / 2;
     int stack_width = screen_width - master_width;
     int stack_height = screen_height / (layout.count - 1);
@@ -160,10 +159,10 @@ void handle_map_request(XEvent ev, Display * dpy) {
     return;
   }
 
-  if (attr.width <= 1 || attr.height <= 1) {
+  // if (attr.width <= 1 || attr.height <= 1) {
     // Sets window to default width and height
-    XResizeWindow(dpy, ev.xmaprequest.window, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
-  }
+    //XResizeWindow(dpy, ev.xmaprequest.window, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
+  //}
 
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
   XSelectInput(dpy, ev.xmaprequest.window, EnterWindowMask | FocusChangeMask | StructureNotifyMask);
@@ -180,28 +179,27 @@ void handle_unmap_request(XEvent ev, Display * dpy) {
 }
 
 void handle_configure_request(XEvent ev, Display * dpy) {
-  unsigned long value_mask = CWX | CWY | CWWidth | CWHeight | CWBorderWidth;
+  XConfigureRequestEvent * req = & ev.xconfigurerequest;
   XWindowChanges changes;
-  XConfigureRequestEvent * req = &ev.xconfigurerequest;
-
-  changes.x = req->x;
-  changes.y = req->y;
-  changes.width = req->width;
-  changes.height = req->height;
-  changes.border_width = req->border_width;
+  changes.x = req -> x;
+  changes.y = req -> y;
+  changes.width = req -> width;
+  changes.height = req -> height;
+  changes.border_width = req -> border_width;
 
   printf("Configuring window 0x%lx to (%d, %d, %d, %d)\n",
-    ev.xconfigurerequest.window,
-    changes.x, changes.y,
-    changes.width, changes.height);
-  
-  if (is_alacritty_window(dpy, req->window)) {
-    printf("Tiling alacritty: 0x%lx\n", req->window); 
+    req -> window, changes.x, changes.y, changes.width, changes.height);
+
+  // Optimize layout application to only when necessary
+  if (layout.count > 1) {
     arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
-    apply_layout(dpy);
-  } else {
-    XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, & changes);
   }
+
+  // Apply changes directly
+  XConfigureWindow(dpy, req -> window, req -> value_mask, & changes);
+  XSync(dpy, False);
+
+  printf("Configure Request completed for window 0x%lx\n", req -> window);
 }
 
 // Handle moving and resizing

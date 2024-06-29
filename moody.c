@@ -11,7 +11,6 @@
 #include "config.h"
 
 #define MAX(a, b)((a) > (b) ? (a) : (b))
-#define MAX_WINDOWS 500
 
 typedef struct {
   Window window;
@@ -44,6 +43,11 @@ void init_layout() {
 
 void add_window_to_layout(Window window) {
   if (layout.count < MAX_WINDOWS) {
+    for (int i = 0; i < layout.count; i++) {
+      if (layout.windows[i]. window == window) {
+        return; 
+      } 
+    }
     // Add window to layout
     layout.windows[layout.count].window = window; 
     layout.count++;
@@ -51,6 +55,9 @@ void add_window_to_layout(Window window) {
       // Add window to master if it's the only window
       layout.master = window; 
     }
+    printf("Window 0x%lx added. Total windows: %d\n", window, layout.count);
+  } else {
+    fprintf(stderr, "Window limit exceeded\n");
   }
 }
 
@@ -69,6 +76,7 @@ void remove_window_from_layout(Window window) {
     if (layout.master == window) {
       layout.master = (layout.count > 0) ? layout.windows[0].window : None;
     }
+    printf("Window 0x%lx removed. Total windows: %d\n", window, layout.count);
   }
 }
 
@@ -160,6 +168,7 @@ void handle_unmap_request(XEvent ev, Display * dpy) {
 void handle_configure_request(XEvent ev, Display * dpy) {
   unsigned long value_mask = CWX | CWY | CWWidth | CWHeight | CWBorderWidth;
   XWindowChanges changes;
+
   changes.x = ev.xconfigurerequest.x;
   changes.y = ev.xconfigurerequest.y;
   changes.width = ev.xconfigurerequest.width;

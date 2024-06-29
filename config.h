@@ -19,6 +19,7 @@
 // Windows
 #define DEFAULT_WINDOW_WIDTH 800
 #define DEFAULT_WINDOW_HEIGHT 800
+#define MAX_WINDOWS 500 // Set max windows
 
 // Moody Keybindings
 

@@ -183,7 +183,7 @@ void handle_configure_request(XEvent ev, Display * dpy) {
   }
 
   // Apply changes directly
-  XConfigureWindow(dpy, req -> window, req -> value_mask, & changes);
+  //XConfigureWindow(dpy, req -> window, req -> value_mask, & changes);
   XSync(dpy, False);
 
   printf("Configure Request completed for window 0x%lx\n", req -> window);

@@ -56,18 +56,18 @@ void add_window_to_layout(Window window) {
 
 void remove_window_from_layout(Window window) {
   int found = 0;
-  for (int i = 0; layout.count; i++) {
+  for (int i = 0; i < layout.count; i++) {
     if (layout.windows[i].window == window) {
       found = 1;
     }
     if (found && i < layout.count - 1) {
-      layout.windows[i] = layout.windows[i + 1]; 
+      layout.windows[i] = layout.windows[i + 1];
     }
-    if (found) {
-      layout.count--;
-      if (layout.master == window) {
-        layout.master = (layout.count > 0) ? layout.windows[0].window : None; 
-      }
+  }
+  if (found) {
+    layout.count--;
+    if (layout.master == window) {
+      layout.master = (layout.count > 0) ? layout.windows[0].window : None;
     }
   }
 }
@@ -75,29 +75,39 @@ void remove_window_from_layout(Window window) {
 void arrange_window(Display * dpy, int screen_width, int screen_height) {
   if (layout.count == 0) return;
 
-  int master_width = screen_width / 2;
-  int stack_width = screen_width - master_width;
-  int stack_height = screen_height / MAX(1, layout.count - 1);
+  if (layout.count == 1) {
+    // One window, Tile it to fullscreen
+    layout.windows[0].x = 0;
+    layout.windows[0].y = 0;
+    layout.windows[0].width = screen_width;
+    layout.windows[0].height = screen_height;
+  } else {
+    // Master layout
+    int master_width = screen_width / 2;
+    int stack_width = screen_width - master_width;
+    int stack_height = screen_height / (layout.count - 1);
 
-  for (int i = 0; i < layout.count; i++) {
-    if (layout.windows[i].window == layout.master) {
-      layout.windows[i].x = 0; 
-      layout.windows[i].y = 0; 
-      layout.windows[i].width = master_width;
-      layout.windows[i].height = screen_height;
-    } else {
-      layout.windows[i].x = master_width;
-      layout.windows[i].y = stack_height * (i - 1);
-      layout.windows[i].width = stack_width;
-      layout.windows[i].height = stack_height;
+    for (int i = 0; i < layout.count; i++) {
+      if (layout.windows[i].window == layout.master) {
+        layout.windows[i].x = 0;
+        layout.windows[i].y = 0;
+        layout.windows[i].width = master_width;
+        layout.windows[i].height = screen_height;
+      } else {
+        layout.windows[i].x = master_width;
+        layout.windows[i].y = stack_height * (i - 1);
+        layout.windows[i].width = stack_width;
+        layout.windows[i].height = stack_height;
+      }
     }
   }
 }
 
 void apply_layout(Display * dpy) {
   for (int i = 0; i < layout.count; i++) {
-    XMoveResizeWindow(dpy, layout.windows[i].window, layout.windows[i].x,
-                      layout.windows[i].y, layout.windows[i].width, layout.windows[i].height); 
+    XMoveResizeWindow(dpy, layout.windows[i].window,
+      layout.windows[i].x, layout.windows[i].y,
+      layout.windows[i].width, layout.windows[i].height);
   }
 }
 

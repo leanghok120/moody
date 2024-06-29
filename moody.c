@@ -4,9 +4,11 @@
 #include <X11/XKBlib.h>
 #include <X11/cursorfont.h>
 #include <X11/Xatom.h>
+#include <X11/Xutil.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include "config.h"
 
@@ -36,6 +38,18 @@ typedef struct {
 TilingLayout layout;
 
 // Tiling functions
+bool is_alacritty_window(Display * dpy, Window window) {
+  XClassHint class_hint;
+  if (XGetClassHint(dpy, window, & class_hint)) {
+    bool is_alacritty = strcmp(class_hint.res_name, "alacritty") == 0 ||
+      strcmp(class_hint.res_class, "Alacritty") == 0;
+    XFree(class_hint.res_name);
+    XFree(class_hint.res_class);
+    return is_alacritty;
+  }
+  return false;
+}
+
 void init_layout() {
   layout.count = 0;
   layout.master = None;
@@ -168,22 +182,26 @@ void handle_unmap_request(XEvent ev, Display * dpy) {
 void handle_configure_request(XEvent ev, Display * dpy) {
   unsigned long value_mask = CWX | CWY | CWWidth | CWHeight | CWBorderWidth;
   XWindowChanges changes;
+  XConfigureRequestEvent * req = &ev.xconfigurerequest;
 
-  changes.x = ev.xconfigurerequest.x;
-  changes.y = ev.xconfigurerequest.y;
-  changes.width = ev.xconfigurerequest.width;
-  changes.height = ev.xconfigurerequest.height;
-  changes.border_width = ev.xconfigurerequest.border_width;
+  changes.x = req->x;
+  changes.y = req->y;
+  changes.width = req->width;
+  changes.height = req->height;
+  changes.border_width = req->border_width;
 
   printf("Configuring window 0x%lx to (%d, %d, %d, %d)\n",
     ev.xconfigurerequest.window,
     changes.x, changes.y,
     changes.width, changes.height);
-
-  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
-  apply_layout(dpy);
-
-  XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, & changes);
+  
+  if (is_alacritty_window(dpy, req->window)) {
+    printf("Tiling alacritty: 0x%lx\n", req->window); 
+    arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+    apply_layout(dpy);
+  } else {
+    XConfigureWindow(dpy, ev.xconfigurerequest.window, value_mask, & changes);
+  }
 }
 
 // Handle moving and resizing

@@ -8,7 +8,6 @@
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include "config.h"
 
@@ -38,18 +37,6 @@ typedef struct {
 TilingLayout layout;
 
 // Tiling functions
-bool is_alacritty_window(Display * dpy, Window window) {
-  XClassHint class_hint;
-  if (XGetClassHint(dpy, window, & class_hint)) {
-    bool is_alacritty = strcmp(class_hint.res_name, "alacritty") == 0 ||
-      strcmp(class_hint.res_class, "Alacritty") == 0;
-    XFree(class_hint.res_name);
-    XFree(class_hint.res_class);
-    return is_alacritty;
-  }
-  return false;
-}
-
 void init_layout() {
   layout.count = 0;
   layout.master = None;

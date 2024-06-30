@@ -13,7 +13,7 @@ build:
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $(TARGET)
 
 clean:
-	rm -rf $(TARGET)
+	rm -rf /usr/bin/$(TARGET)
 
 run:
 	./preview.sh
@@ -21,5 +21,5 @@ run:
 install:
 	cp ./$(TARGET) /usr/bin/
 	cp ./autostart.sh /usr/bin/
-	chmod 755 /usr/bin/moody
+	chmod 755 /usr/bin/$(TARGET)
 	chmod 755 /usr/bin/autostart.sh

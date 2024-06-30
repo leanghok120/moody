@@ -23,16 +23,18 @@ typedef struct {
 DragState;
 
 typedef struct {
-    Window window;
-    int x, y;
-    int width, height;
-} WindowInfo;
+  Window window;
+  int x, y;
+  int width, height;
+}
+WindowInfo;
 
 typedef struct {
-    WindowInfo windows[MAX_WINDOWS];
-    int count;
-    Window master; // Store the master window
-} TilingLayout;
+  WindowInfo windows[MAX_WINDOWS];
+  int count;
+  Window master; // Store the master window
+}
+TilingLayout;
 
 TilingLayout layout;
 
@@ -45,16 +47,16 @@ void init_layout() {
 void add_window_to_layout(Window window) {
   if (layout.count < MAX_WINDOWS) {
     for (int i = 0; i < layout.count; i++) {
-      if (layout.windows[i]. window == window) {
-        return; 
-      } 
+      if (layout.windows[i].window == window) {
+        return;
+      }
     }
     // Add window to layout
-    layout.windows[layout.count].window = window; 
+    layout.windows[layout.count].window = window;
     layout.count++;
     if (layout.master == None) {
       // Add window to master if it's the only window
-      layout.master = window; 
+      layout.master = window;
     }
     printf("Window 0x%lx added. Total windows: %d\n", window, layout.count);
   } else {
@@ -147,8 +149,8 @@ void handle_map_request(XEvent ev, Display * dpy) {
   }
 
   // if (attr.width <= 1 || attr.height <= 1) {
-    // Sets window to default width and height
-    //XResizeWindow(dpy, ev.xmaprequest.window, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
+  // Sets window to default width and height
+  //XResizeWindow(dpy, ev.xmaprequest.window, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
   //}
 
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
@@ -174,19 +176,40 @@ void handle_configure_request(XEvent ev, Display * dpy) {
   changes.height = req -> height;
   changes.border_width = req -> border_width;
 
-  printf("Configuring window 0x%lx to (%d, %d, %d, %d)\n",
-    req -> window, changes.x, changes.y, changes.width, changes.height);
+  printf("Configure request: window 0x%lx, (%d, %d, %d, %d)\n",
+    req -> window, req -> x, req -> y, req -> width, req -> height);
 
-  // Optimize layout application to only when necessary
-  if (layout.count > 1) {
-    arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+  // Determine if this window should have `XConfigureWindow` applied
+  char * window_name = NULL;
+  XFetchName(dpy, req -> window, & window_name);
+  int should_configure = 1;
+
+  if (window_name) {
+    if (strcmp(window_name, "firefox") == 0) {
+      should_configure = 0; // Skip Firefox
+    }
+    XFree(window_name);
   }
 
-  // Apply changes directly
-  //XConfigureWindow(dpy, req -> window, req -> value_mask, & changes);
-  XSync(dpy, False);
+  // If not Firefox or similar apps, apply configuration
+  if (should_configure) {
+    XConfigureWindow(dpy, req -> window, req -> value_mask, & changes);
+  }
 
-  printf("Configure Request completed for window 0x%lx\n", req -> window);
+  // Regardless, maintain the internal layout
+  for (int i = 0; i < layout.count; i++) {
+    if (layout.windows[i].window == req -> window) {
+      layout.windows[i].x = changes.x;
+      layout.windows[i].y = changes.y;
+      layout.windows[i].width = changes.width;
+      layout.windows[i].height = changes.height;
+      break;
+    }
+  }
+
+  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+  apply_layout(dpy);
+  XSync(dpy, False);
 }
 
 // Handle moving and resizing

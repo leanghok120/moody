@@ -14,6 +14,14 @@
 #define MAX(a, b)((a) > (b) ? (a) : (b))
 
 typedef struct {
+  Window windows[MAX_WINDOWS];
+  int count;
+} Workspace;
+
+Workspace workspaces[MAX_WORKSPACES];
+int current_workspace = 0;
+
+typedef struct {
   Window window;
   int start_x, start_y;
   int x, y;
@@ -42,10 +50,17 @@ TilingLayout layout;
 void init_layout() {
   layout.count = 0;
   layout.master = None;
+  for (int i = 0; MAX_WORKSPACES; i++) {
+    workspaces[i].count = 0; 
+  }
+  current_workspace = 0;
 }
 
 void add_window_to_layout(Window window) {
-  if (layout.count < MAX_WINDOWS) {
+  if (workspaces[current_workspace].count < MAX_WINDOWS) {
+    // Add window to current workspace
+    workspaces[current_workspace].windows[workspaces[current_workspace].count] = window;
+    workspaces[current_workspace].count++;
     for (int i = 0; i < layout.count; i++) {
       if (layout.windows[i].window == window) {
         return;
@@ -58,28 +73,44 @@ void add_window_to_layout(Window window) {
       // Add window to master if it's the only window
       layout.master = window;
     }
-    printf("Window 0x%lx added. Total windows: %d\n", window, layout.count);
+    printf("Window 0x%lx added to workspace %d. Total windows in workspace: %d\n", window, current_workspace, workspaces[current_workspace].count);
   } else {
-    fprintf(stderr, "Window limit exceeded\n");
+    fprintf(stderr, "Window limit exceeded in workspace %d\n", current_workspace);
   }
 }
 
 void remove_window_from_layout(Window window) {
   int found = 0;
-  for (int i = 0; i < layout.count; i++) {
-    if (layout.windows[i].window == window) {
+  for (int i = 0; i < workspaces[current_workspace].count; i++) {
+    if (workspaces[current_workspace].windows[i] == window) {
+      // Remove window from current workspace
+      for (int j = i; j < workspaces[current_workspace].count - 1; j++) {
+        workspaces[current_workspace].windows[j] = workspaces[current_workspace].windows[j + 1];
+      }
+      workspaces[current_workspace].count--;
+
+      // Adjust layout if necessary
+      for (int k = 0; k < layout.count; k++) {
+        if (layout.windows[k].window == window) {
+          if (layout.master == window) {
+            layout.master = (layout.count > 1) ? layout.windows[1].window : None;
+          }
+          for (int l = k; l < layout.count - 1; l++) {
+            layout.windows[l] = layout.windows[l + 1];
+          }
+          layout.count--;
+          break;
+        }
+      }
+
       found = 1;
-    }
-    if (found && i < layout.count - 1) {
-      layout.windows[i] = layout.windows[i + 1];
+      printf("Window 0x%lx removed from workspace %d. Total windows in workspace: %d\n", window, current_workspace, workspaces[current_workspace].count);
+      return;
     }
   }
-  if (found) {
-    layout.count--;
-    if (layout.master == window) {
-      layout.master = (layout.count > 0) ? layout.windows[0].window : None;
-    }
-    printf("Window 0x%lx removed. Total windows: %d\n", window, layout.count);
+
+  if (!found) {
+    printf("Window 0x%lx not found in workspace %d\n", window, current_workspace);
   }
 }
 
@@ -148,11 +179,6 @@ void handle_map_request(XEvent ev, Display * dpy) {
     return;
   }
 
-  // if (attr.width <= 1 || attr.height <= 1) {
-  // Sets window to default width and height
-  //XResizeWindow(dpy, ev.xmaprequest.window, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
-  //}
-
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
   XSelectInput(dpy, ev.xmaprequest.window, EnterWindowMask | FocusChangeMask | StructureNotifyMask);
   XMapWindow(dpy, ev.xmaprequest.window);
@@ -165,6 +191,16 @@ void handle_unmap_request(XEvent ev, Display * dpy) {
   remove_window_from_layout(ev.xunmap.window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
+}
+
+void switch_to_workspace(int workspace_index, Display * dpy) {
+  if (workspace_index >= 0 && workspace_index < MAX_WORKSPACES) {
+    current_workspace = workspace_index;
+    // Re-arrange and apply layout for the new workspace
+    arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+    apply_layout(dpy);
+    printf("Switched to workspace %d\n", current_workspace);
+  }
 }
 
 void handle_configure_request(XEvent ev, Display * dpy) {
@@ -286,6 +322,18 @@ void kill_focused_window(Display * dpy) {
   }
 }
 
+void handle_keypress_event(Display * dpy, XEvent ev) {
+  KeySym key = XkbKeycodeToKeysym(dpy, ev.xkey.keycode, 0, 0);
+  // mod + kill-key
+  if (ev.xkey.keycode == XKeysymToKeycode(dpy, KILL_KEY) && (ev.xkey.state & MODIFIER)) {
+    printf("Modifier + q pressed, killing window\n");
+    kill_focused_window(dpy);
+  }
+  if (key >= XK_1 && key <= XK_9) {
+      switch_to_workspace(key - XK_1, dpy);
+  }
+}
+
 void handle_events(Display * dpy, Window root, int scr) {
   DragState drag = {
     0
@@ -333,11 +381,7 @@ void handle_events(Display * dpy, Window root, int scr) {
       end_drag(dpy, & drag);
       break;
     case KeyPress:
-      // mod + kill-key
-      if (ev.xkey.keycode == XKeysymToKeycode(dpy, KILL_KEY) && (ev.xkey.state & MODIFIER)) {
-        printf("Modifier + q pressed, killing window\n");
-        kill_focused_window(dpy);
-      }
+      handle_keypress_event(dpy, ev);
       break;
     default:
       printf("Other event type: %d\n", ev.type);

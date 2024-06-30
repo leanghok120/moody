@@ -7,10 +7,10 @@
 
 // Moody Settings
 #define WM_NAME "moody" // Set wm name for neofetch to use
+#define MAX_WORKSPACES 9
 
 // Modifier keys
 #define MODIFIER Mod1Mask // Alt key, change to Mod4Mask for Super key (Windows key)
-
 
 // Moving and Resizing buttons
 #define MOVE_BUTTON Button1 // left mouse button

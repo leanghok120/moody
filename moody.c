@@ -14,14 +14,6 @@
 #define MAX(a, b)((a) > (b) ? (a) : (b))
 
 typedef struct {
-  Window windows[MAX_WINDOWS];
-  int count;
-} Workspace;
-
-Workspace workspaces[MAX_WORKSPACES];
-int current_workspace = 0;
-
-typedef struct {
   Window window;
   int start_x, start_y;
   int x, y;
@@ -46,110 +38,149 @@ TilingLayout;
 
 TilingLayout layout;
 
+typedef struct {
+    TilingLayout layouts[MAX_WORKSPACES];
+    int current_workspace;
+} WorkspaceManager;
+
+WorkspaceManager workspace_manager;
+
+
 // Tiling functions
 void init_layout() {
   layout.count = 0;
   layout.master = None;
-  for (int i = 0; MAX_WORKSPACES; i++) {
-    workspaces[i].count = 0; 
-  }
-  current_workspace = 0;
 }
 
-void add_window_to_layout(Window window) {
-  if (workspaces[current_workspace].count < MAX_WINDOWS) {
-    // Add window to current workspace
-    workspaces[current_workspace].windows[workspaces[current_workspace].count] = window;
-    workspaces[current_workspace].count++;
-    for (int i = 0; i < layout.count; i++) {
-      if (layout.windows[i].window == window) {
-        return;
+void add_window_to_layout(Window window, TilingLayout * layout) {
+  if (layout -> count < MAX_WINDOWS) {
+    for (int i = 0; i < layout -> count; i++) {
+      if (layout -> windows[i].window == window) {
+        return; // Window already exists in layout
       }
     }
-    // Add window to layout
-    layout.windows[layout.count].window = window;
-    layout.count++;
-    if (layout.master == None) {
-      // Add window to master if it's the only window
-      layout.master = window;
+    layout -> windows[layout -> count].window = window;
+    layout -> count++;
+    if (layout -> master == None) {
+      layout -> master = window;
     }
-    printf("Window 0x%lx added to workspace %d. Total windows in workspace: %d\n", window, current_workspace, workspaces[current_workspace].count);
+    printf("Window 0x%lx added. Total windows: %d\n", window, layout -> count);
   } else {
-    fprintf(stderr, "Window limit exceeded in workspace %d\n", current_workspace);
+    fprintf(stderr, "Window limit exceeded\n");
   }
 }
 
-void remove_window_from_layout(Window window) {
+void remove_window_from_layout(Window window, TilingLayout * layout) {
   int found = 0;
-  for (int i = 0; i < workspaces[current_workspace].count; i++) {
-    if (workspaces[current_workspace].windows[i] == window) {
-      // Remove window from current workspace
-      for (int j = i; j < workspaces[current_workspace].count - 1; j++) {
-        workspaces[current_workspace].windows[j] = workspaces[current_workspace].windows[j + 1];
-      }
-      workspaces[current_workspace].count--;
-
-      // Adjust layout if necessary
-      for (int k = 0; k < layout.count; k++) {
-        if (layout.windows[k].window == window) {
-          if (layout.master == window) {
-            layout.master = (layout.count > 1) ? layout.windows[1].window : None;
-          }
-          for (int l = k; l < layout.count - 1; l++) {
-            layout.windows[l] = layout.windows[l + 1];
-          }
-          layout.count--;
-          break;
-        }
-      }
-
+  for (int i = 0; i < layout -> count; i++) {
+    if (layout -> windows[i].window == window) {
       found = 1;
-      printf("Window 0x%lx removed from workspace %d. Total windows in workspace: %d\n", window, current_workspace, workspaces[current_workspace].count);
-      return;
+    }
+    if (found && i < layout -> count - 1) {
+      layout -> windows[i] = layout -> windows[i + 1];
     }
   }
-
-  if (!found) {
-    printf("Window 0x%lx not found in workspace %d\n", window, current_workspace);
+  if (found) {
+    layout -> count--;
+    if (layout -> master == window) {
+      layout -> master = (layout -> count > 0) ? layout -> windows[0].window : None;
+    }
+    printf("Window 0x%lx removed. Total windows: %d\n", window, layout -> count);
   }
 }
 
 void arrange_window(Display * dpy, int screen_width, int screen_height) {
-  if (layout.count == 0) return;
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  if (current_layout -> count == 0) return;
 
-  // Check if layout needs to be updated
-  if (layout.count == 1) {
-    layout.windows[0].x = 0;
-    layout.windows[0].y = 0;
-    layout.windows[0].width = screen_width;
-    layout.windows[0].height = screen_height;
+  if (current_layout -> count == 1) {
+    current_layout -> windows[0].x = 0;
+    current_layout -> windows[0].y = 0;
+    current_layout -> windows[0].width = screen_width;
+    current_layout -> windows[0].height = screen_height;
   } else {
     int master_width = screen_width / 2;
     int stack_width = screen_width - master_width;
-    int stack_height = screen_height / (layout.count - 1);
+    int stack_height = screen_height / (current_layout -> count - 1);
 
-    for (int i = 0; i < layout.count; i++) {
-      if (layout.windows[i].window == layout.master) {
-        layout.windows[i].x = 0;
-        layout.windows[i].y = 0;
-        layout.windows[i].width = master_width;
-        layout.windows[i].height = screen_height;
+    for (int i = 0; i < current_layout -> count; i++) {
+      if (current_layout -> windows[i].window == current_layout -> master) {
+        current_layout -> windows[i].x = 0;
+        current_layout -> windows[i].y = 0;
+        current_layout -> windows[i].width = master_width;
+        current_layout -> windows[i].height = screen_height;
       } else {
-        layout.windows[i].x = master_width;
-        layout.windows[i].y = stack_height * (i - 1);
-        layout.windows[i].width = stack_width;
-        layout.windows[i].height = stack_height;
+        current_layout -> windows[i].x = master_width;
+        current_layout -> windows[i].y = stack_height * (i - 1);
+        current_layout -> windows[i].width = stack_width;
+        current_layout -> windows[i].height = stack_height;
       }
     }
   }
 }
 
 void apply_layout(Display * dpy) {
-  for (int i = 0; i < layout.count; i++) {
-    XMoveResizeWindow(dpy, layout.windows[i].window,
-      layout.windows[i].x, layout.windows[i].y,
-      layout.windows[i].width, layout.windows[i].height);
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  for (int i = 0; i < current_layout -> count; i++) {
+    XMoveResizeWindow(dpy, current_layout -> windows[i].window,
+      current_layout -> windows[i].x, current_layout -> windows[i].y,
+      current_layout -> windows[i].width, current_layout -> windows[i].height);
   }
+}
+
+// Workspace functions
+void init_workspace_manager() {
+    workspace_manager.current_workspace = 0;
+    for (int i = 0; i < MAX_WORKSPACES; i++) {
+        workspace_manager.layouts[i].count = 0;
+        workspace_manager.layouts[i].master = None;
+    }
+}
+
+void switch_workspace(Display * dpy, int workspace_index) {
+  if (workspace_index < 0 || workspace_index >= MAX_WORKSPACES) return;
+
+  // Hide windows in current workspace
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  for (int i = 0; i < current_layout -> count; i++) {
+    XUnmapWindow(dpy, current_layout -> windows[i].window);
+  }
+
+  // Change to new workspace
+  workspace_manager.current_workspace = workspace_index;
+
+  // Show windows in new workspace
+  TilingLayout * new_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  for (int i = 0; i < new_layout -> count; i++) {
+    XMapWindow(dpy, new_layout -> windows[i].window);
+  }
+
+  // Reapply layout for the new workspace
+  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+  apply_layout(dpy);
+
+  printf("Switched to workspace %d\n", workspace_index);
+}
+
+void add_window_to_current_workspace(Display *dpy, Window window) {
+    TilingLayout *current_layout = &workspace_manager.layouts[workspace_manager.current_workspace];
+    add_window_to_layout(window, current_layout);
+    arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+    apply_layout(dpy);
+}
+
+void remove_window_from_current_workspace(Display *dpy, Window window) {
+    TilingLayout *current_layout = &workspace_manager.layouts[workspace_manager.current_workspace];
+    remove_window_from_layout(window, current_layout);
+    arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+    apply_layout(dpy);
+}
+
+void setup_keybindings(Display *dpy, Window root) {
+    for (int i = 1; i <= MAX_WORKSPACES; i++) {
+        KeyCode keycode = XKeysymToKeycode(dpy, XK_1 + i - 1);
+        XGrabKey(dpy, keycode, MODIFIER, root, True, GrabModeAsync, GrabModeAsync);
+    }
 }
 
 // Set Cursor font to avoid no cursor
@@ -182,25 +213,17 @@ void handle_map_request(XEvent ev, Display * dpy) {
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
   XSelectInput(dpy, ev.xmaprequest.window, EnterWindowMask | FocusChangeMask | StructureNotifyMask);
   XMapWindow(dpy, ev.xmaprequest.window);
-  add_window_to_layout(ev.xmaprequest.window);
+  add_window_to_layout(ev.xmaprequest.window, &workspace_manager.layouts[workspace_manager.current_workspace]);
+  add_window_to_current_workspace(dpy, ev.xmaprequest.window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
 }
 
 void handle_unmap_request(XEvent ev, Display * dpy) {
-  remove_window_from_layout(ev.xunmap.window);
+  remove_window_from_layout(ev.xunmap.window, &workspace_manager.layouts[workspace_manager.current_workspace]);
+  remove_window_from_current_workspace(dpy, ev.xunmap.window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
-}
-
-void switch_to_workspace(int workspace_index, Display * dpy) {
-  if (workspace_index >= 0 && workspace_index < MAX_WORKSPACES) {
-    current_workspace = workspace_index;
-    // Re-arrange and apply layout for the new workspace
-    arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
-    apply_layout(dpy);
-    printf("Switched to workspace %d\n", current_workspace);
-  }
 }
 
 void handle_configure_request(XEvent ev, Display * dpy) {
@@ -323,14 +346,21 @@ void kill_focused_window(Display * dpy) {
 }
 
 void handle_keypress_event(Display * dpy, XEvent ev) {
-  KeySym key = XkbKeycodeToKeysym(dpy, ev.xkey.keycode, 0, 0);
+  KeySym keysym = XkbKeycodeToKeysym(dpy, ev.xkey.keycode, 0, 0);
+
   // mod + kill-key
   if (ev.xkey.keycode == XKeysymToKeycode(dpy, KILL_KEY) && (ev.xkey.state & MODIFIER)) {
     printf("Modifier + q pressed, killing window\n");
     kill_focused_window(dpy);
   }
-  if (key >= XK_1 && key <= XK_9) {
-      switch_to_workspace(key - XK_1, dpy);
+
+  // Switch workspace mod + 1-9
+  if (ev.xkey.state & MODIFIER) {
+    if (keysym >= XK_1 && keysym <= XK_9) {
+      int workspace_index = keysym - XK_1;
+      printf("Switching to workspace %d\n", workspace_index);
+      switch_workspace(dpy, workspace_index);
+    }
   }
 }
 
@@ -438,6 +468,9 @@ int main() {
 
   printf("Opened display\n");
 
+  init_layout();
+  init_workspace_manager();
+  setup_keybindings(dpy, root);
   set_default_cursor(dpy, root);
   set_window_manager_name(dpy, root, WM_NAME);
 

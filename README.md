@@ -12,7 +12,7 @@ Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is
 - [x] Windows management (moving, resizing)
 - [x] Windows tiling
 - [x] Multiple workspaces
-- [ ] Windows decoration
+- [x] Windows decoration
 - [x] Keybindings
 - [x] Startup commands
 - [x] Configurations

@@ -26,6 +26,7 @@ typedef struct {
   Window window;
   int x, y;
   int width, height;
+  int border_width;
 }
 WindowInfo;
 
@@ -46,21 +47,48 @@ WorkspaceManager;
 
 WorkspaceManager workspace_manager;
 
+// Window decorations
+void hex_to_rgb(const char * hex, XColor * color, Display * dpy) {
+  unsigned int r, g, b;
+  if (sscanf(hex, "#%02x%02x%02x", & r, & g, & b) != 3) {
+    fprintf(stderr, "Invalid color format: %s\n", hex);
+    return;
+  }
+
+  color -> red = r * 257; // Scale up to 16-bit
+  color -> green = g * 257; // Scale up to 16-bit
+  color -> blue = b * 257; // Scale up to 16-bit
+  color -> flags = DoRed | DoGreen | DoBlue;
+  XAllocColor(dpy, DefaultColormap(dpy, DefaultScreen(dpy)), color);
+}
+
+void draw_window_border(Display * dpy, Window window, int border_width, const char *color_hex) {
+  XColor color;
+  hex_to_rgb(color_hex, &color, dpy);
+
+  XSetWindowBorder(dpy, window, color.pixel);
+  XSetWindowBorderWidth(dpy, window, border_width);
+}
+
 // Tiling functions
 void init_layout() {
   layout.count = 0;
   layout.master = None;
 }
 
-void add_window_to_layout(Window window, TilingLayout * layout) {
+void add_window_to_layout(Display * dpy, Window window, TilingLayout * layout) {
   if (layout -> count < MAX_WINDOWS) {
     for (int i = 0; i < layout -> count; i++) {
       if (layout -> windows[i].window == window) {
         return; // Window already exists in layout
       }
     }
+
     layout -> windows[layout -> count].window = window;
+    layout -> windows[layout -> count].border_width = BORDER_WIDTH;
+    draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
     layout -> count++;
+
     if (layout -> master == None) {
       layout -> master = window;
     }
@@ -91,29 +119,32 @@ void remove_window_from_layout(Window window, TilingLayout * layout) {
 
 void arrange_window(Display * dpy, int screen_width, int screen_height) {
   TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  int current_window_border_width = current_layout -> windows[0].border_width;
   if (current_layout -> count == 0) return;
 
   if (current_layout -> count == 1) {
     current_layout -> windows[0].x = 0;
     current_layout -> windows[0].y = 0;
-    current_layout -> windows[0].width = screen_width;
-    current_layout -> windows[0].height = screen_height;
+    current_layout -> windows[0].width = screen_width - 2 * current_window_border_width;
+    current_layout -> windows[0].height = screen_height - 2 * current_window_border_width;
   } else {
     int master_width = screen_width / 2;
     int stack_width = screen_width - master_width;
     int stack_height = screen_height / (current_layout -> count - 1);
 
     for (int i = 0; i < current_layout -> count; i++) {
+      current_window_border_width = current_layout->windows[i].border_width;
+
       if (current_layout -> windows[i].window == current_layout -> master) {
         current_layout -> windows[i].x = 0;
         current_layout -> windows[i].y = 0;
-        current_layout -> windows[i].width = master_width;
-        current_layout -> windows[i].height = screen_height;
+        current_layout -> windows[i].width = master_width - 2 * current_window_border_width;
+        current_layout -> windows[i].height = screen_height - 2 * current_window_border_width;
       } else {
         current_layout -> windows[i].x = master_width;
         current_layout -> windows[i].y = stack_height * (i - 1);
-        current_layout -> windows[i].width = stack_width;
-        current_layout -> windows[i].height = stack_height;
+        current_layout -> windows[i].width = stack_width - 2 * current_window_border_width;
+        current_layout -> windows[i].height = stack_height - 2 * current_window_border_width;
       }
     }
   }
@@ -174,7 +205,7 @@ void switch_workspace(Display * dpy, int workspace_index) {
 
 void add_window_to_current_workspace(Display * dpy, Window window) {
   TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
-  add_window_to_layout(window, current_layout);
+  add_window_to_layout(dpy, window, current_layout);
   XMapWindow(dpy, window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
@@ -234,7 +265,7 @@ void handle_map_request(XEvent ev, Display * dpy) {
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
   XSelectInput(dpy, ev.xmaprequest.window, EnterWindowMask | FocusChangeMask | StructureNotifyMask);
   XMapWindow(dpy, ev.xmaprequest.window);
-  add_window_to_layout(ev.xmaprequest.window, & workspace_manager.layouts[workspace_manager.current_workspace]);
+  add_window_to_layout(dpy, ev.xmaprequest.window, & workspace_manager.layouts[workspace_manager.current_workspace]);
   add_window_to_current_workspace(dpy, ev.xmaprequest.window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);

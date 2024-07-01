@@ -21,6 +21,8 @@
 #define DEFAULT_WINDOW_WIDTH 800
 #define DEFAULT_WINDOW_HEIGHT 800
 #define MAX_WINDOWS 500 // Set max windows
+#define BORDER_WIDTH 4
+#define BORDER_COLOR "#000000" // Set border color to white
 
 // Keybindings
 typedef struct {

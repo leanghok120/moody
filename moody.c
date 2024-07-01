@@ -39,12 +39,12 @@ TilingLayout;
 TilingLayout layout;
 
 typedef struct {
-    TilingLayout layouts[MAX_WORKSPACES];
-    int current_workspace;
-} WorkspaceManager;
+  TilingLayout layouts[MAX_WORKSPACES];
+  int current_workspace;
+}
+WorkspaceManager;
 
 WorkspaceManager workspace_manager;
-
 
 // Tiling functions
 void init_layout() {
@@ -130,15 +130,15 @@ void apply_layout(Display * dpy) {
 
 // Workspace functions
 void init_workspace_manager() {
-    workspace_manager.current_workspace = 0;
-    for (int i = 0; i < MAX_WORKSPACES; i++) {
-        workspace_manager.layouts[i].count = 0;
-        workspace_manager.layouts[i].master = None;
-    }
+  workspace_manager.current_workspace = 1;
+  for (int i = 1; i < MAX_WORKSPACES; i++) {
+    workspace_manager.layouts[i].count = 0;
+    workspace_manager.layouts[i].master = None;
+  }
 }
 
 void switch_workspace(Display * dpy, int workspace_index) {
-  if (workspace_index < 0 || workspace_index >= MAX_WORKSPACES) return;
+  if (workspace_index < 1 || workspace_index > MAX_WORKSPACES) return;
 
   // Hide windows in current workspace
   TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
@@ -162,25 +162,34 @@ void switch_workspace(Display * dpy, int workspace_index) {
   printf("Switched to workspace %d\n", workspace_index);
 }
 
-void add_window_to_current_workspace(Display *dpy, Window window) {
-    TilingLayout *current_layout = &workspace_manager.layouts[workspace_manager.current_workspace];
-    add_window_to_layout(window, current_layout);
-    arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
-    apply_layout(dpy);
+void add_window_to_current_workspace(Display * dpy, Window window) {
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  add_window_to_layout(window, current_layout);
+  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+  apply_layout(dpy);
 }
 
-void remove_window_from_current_workspace(Display *dpy, Window window) {
-    TilingLayout *current_layout = &workspace_manager.layouts[workspace_manager.current_workspace];
-    remove_window_from_layout(window, current_layout);
-    arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
-    apply_layout(dpy);
+void remove_window_from_current_workspace(Display * dpy, Window window) {
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  remove_window_from_layout(window, current_layout);
+  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
+  apply_layout(dpy);
 }
 
-void setup_keybindings(Display *dpy, Window root) {
-    for (int i = 1; i <= MAX_WORKSPACES; i++) {
-        KeyCode keycode = XKeysymToKeycode(dpy, XK_1 + i - 1);
-        XGrabKey(dpy, keycode, MODIFIER, root, True, GrabModeAsync, GrabModeAsync);
-    }
+void setup_keybindings(Display * dpy, Window root) {
+  for (int i = 0; i < NUM_KEYBINDINGS; i++) {
+    KeyCode keycode = XKeysymToKeycode(dpy, keybindings[i].keysym);
+    XGrabKey(dpy, keycode, keybindings[i].modifier, root, True, GrabModeAsync, GrabModeAsync);
+  }
+
+  // Grab Moving and resizing keybinds
+  XGrabButton(dpy, MOVE_BUTTON, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
+    GrabModeAsync, None, None);
+  XGrabButton(dpy, RESIZE_BUTTON, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
+    GrabModeAsync, None, None);
+
+  // Window keybindings
+  XGrabKey(dpy, XKeysymToKeycode(dpy, KILL_KEY), MODIFIER, root, True, GrabModeAsync, GrabModeAsync);
 }
 
 // Set Cursor font to avoid no cursor
@@ -213,14 +222,14 @@ void handle_map_request(XEvent ev, Display * dpy) {
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
   XSelectInput(dpy, ev.xmaprequest.window, EnterWindowMask | FocusChangeMask | StructureNotifyMask);
   XMapWindow(dpy, ev.xmaprequest.window);
-  add_window_to_layout(ev.xmaprequest.window, &workspace_manager.layouts[workspace_manager.current_workspace]);
+  add_window_to_layout(ev.xmaprequest.window, & workspace_manager.layouts[workspace_manager.current_workspace]);
   add_window_to_current_workspace(dpy, ev.xmaprequest.window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
 }
 
 void handle_unmap_request(XEvent ev, Display * dpy) {
-  remove_window_from_layout(ev.xunmap.window, &workspace_manager.layouts[workspace_manager.current_workspace]);
+  remove_window_from_layout(ev.xunmap.window, & workspace_manager.layouts[workspace_manager.current_workspace]);
   remove_window_from_current_workspace(dpy, ev.xunmap.window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
@@ -328,38 +337,42 @@ void raise_window(Display * dpy, Window window) {
 }
 
 void kill_focused_window(Display * dpy) {
-  Window root, parent;
-  Window * children;
-  unsigned int nchildren;
-  Window focused;
+  Window focused_window;
   int revert_to;
 
-  // Get focused window
-  XGetInputFocus(dpy, & focused, & revert_to);
+  // Get the currently focused window
+  XGetInputFocus(dpy, & focused_window, & revert_to);
 
-  if (focused != None && focused != PointerRoot) {
-    XDestroyWindow(dpy, focused);
-    printf("Killed window 0x%lx\n", focused);
+  if (focused_window != None && focused_window != PointerRoot) {
+    XDestroyWindow(dpy, focused_window);
+    printf("Killed window 0x%lx\n", focused_window);
   } else {
     printf("No window is focused\n");
   }
 }
 
-void handle_keypress_event(Display * dpy, XEvent ev) {
+void handle_keypress_event(XEvent ev, Display * dpy) {
   KeySym keysym = XkbKeycodeToKeysym(dpy, ev.xkey.keycode, 0, 0);
 
-  // mod + kill-key
-  if (ev.xkey.keycode == XKeysymToKeycode(dpy, KILL_KEY) && (ev.xkey.state & MODIFIER)) {
-    printf("Modifier + q pressed, killing window\n");
+  // Kill focused window
+  if (keysym == KILL_KEY && (ev.xkey.state & MODIFIER)) {
     kill_focused_window(dpy);
+    return;
   }
 
-  // Switch workspace mod + 1-9
-  if (ev.xkey.state & MODIFIER) {
-    if (keysym >= XK_1 && keysym <= XK_9) {
-      int workspace_index = keysym - XK_1;
-      printf("Switching to workspace %d\n", workspace_index);
-      switch_workspace(dpy, workspace_index);
+  // Get all keybindings for programs
+  for (int i = 0; i < NUM_KEYBINDINGS; i++) {
+    if (keysym == keybindings[i].keysym && (ev.xkey.state & keybindings[i].modifier)) {
+      if (keybindings[i].workspace != -1) {
+        switch_workspace(dpy, keybindings[i].workspace);
+      } else if (keybindings[i].command) {
+        // Execute the command
+        char command[256];
+        snprintf(command, sizeof(command), "%s &", keybindings[i].command);
+        system(command);
+        printf("Executed command: %s\n", keybindings[i].command);
+      }
+      return;
     }
   }
 }
@@ -411,7 +424,7 @@ void handle_events(Display * dpy, Window root, int scr) {
       end_drag(dpy, & drag);
       break;
     case KeyPress:
-      handle_keypress_event(dpy, ev);
+      handle_keypress_event(ev, dpy);
       break;
     default:
       printf("Other event type: %d\n", ev.type);
@@ -448,17 +461,6 @@ int main() {
     ButtonPressMask | ButtonReleaseMask | PointerMotionMask | KeyPressMask | EnterWindowMask);
 
   system("/usr/bin/autostart.sh &");
-
-  // Grab Moving and resizing keybinds
-  XGrabButton(dpy, MOVE_BUTTON, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
-    GrabModeAsync, None, None);
-  XGrabButton(dpy, RESIZE_BUTTON, MODIFIER, root, True, ButtonPressMask, GrabModeAsync,
-    GrabModeAsync, None, None);
-
-  // Grab Windows keybinds
-  // kill focused window
-  XGrabKey(dpy, XKeysymToKeycode(dpy, KILL_KEY), MODIFIER, root, True,
-    GrabModeAsync, GrabModeAsync);
 
   XSync(dpy, False);
 

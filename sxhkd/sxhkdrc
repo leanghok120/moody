@@ -1,7 +1,0 @@
-# Rofi
-alt + space
-  rofi -show drun
-
-# Terminal
-alt + Return
-  xterm

@@ -1,4 +1,3 @@
 #!/bin/bash
 
-# Starts keybinding daemon
-sxhkd &
+xset r rate 200

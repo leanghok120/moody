@@ -140,8 +140,15 @@ void init_workspace_manager() {
 void switch_workspace(Display * dpy, int workspace_index) {
   if (workspace_index < 1 || workspace_index > MAX_WORKSPACES) return;
 
+  if (workspace_manager.current_workspace == workspace_index) {
+    printf("Already on workspace %d\n", workspace_index);
+    return;
+  }
+
+  TilingLayout *current_layout = &workspace_manager.layouts[workspace_manager.current_workspace];
+  TilingLayout *new_layout = &workspace_manager.layouts[workspace_index];
+
   // Hide windows in current workspace
-  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
   for (int i = 0; i < current_layout -> count; i++) {
     XUnmapWindow(dpy, current_layout -> windows[i].window);
   }
@@ -150,9 +157,12 @@ void switch_workspace(Display * dpy, int workspace_index) {
   workspace_manager.current_workspace = workspace_index;
 
   // Show windows in new workspace
-  TilingLayout * new_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
   for (int i = 0; i < new_layout -> count; i++) {
     XMapWindow(dpy, new_layout -> windows[i].window);
+  }
+
+  for (int i = new_layout->count - 1; i >= 0; i--) {
+      XRaiseWindow(dpy, new_layout->windows[i].window);
   }
 
   // Reapply layout for the new workspace
@@ -165,6 +175,7 @@ void switch_workspace(Display * dpy, int workspace_index) {
 void add_window_to_current_workspace(Display * dpy, Window window) {
   TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
   add_window_to_layout(window, current_layout);
+  XMapWindow(dpy, window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
 }
@@ -172,6 +183,7 @@ void add_window_to_current_workspace(Display * dpy, Window window) {
 void remove_window_from_current_workspace(Display * dpy, Window window) {
   TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
   remove_window_from_layout(window, current_layout);
+  XUnmapWindow(dpy, window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
 }
@@ -460,8 +472,6 @@ int main() {
   XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask |
     ButtonPressMask | ButtonReleaseMask | PointerMotionMask | KeyPressMask | EnterWindowMask);
 
-  system("/usr/bin/autostart.sh &");
-
   XSync(dpy, False);
 
   if (error_occurred) {
@@ -469,6 +479,9 @@ int main() {
   }
 
   printf("Opened display\n");
+
+  // Launch startup commands
+  system("/usr/bin/autostart.sh &");
 
   init_layout();
   init_workspace_manager();
@@ -479,5 +492,4 @@ int main() {
   handle_events(dpy, root, scr);
 
   XCloseDisplay(dpy);
-  return 0;
 }

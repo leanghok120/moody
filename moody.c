@@ -120,32 +120,32 @@ void remove_window_from_layout(Window window, TilingLayout * layout) {
 
 void arrange_window(Display * dpy, int screen_width, int screen_height) {
   TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
-  int current_window_border_width = current_layout -> windows[0].border_width;
   if (current_layout -> count == 0) return;
 
+  int usable_width = screen_width - 2 * OUTER_GAP;
+  int usable_height = screen_height - 2 * OUTER_GAP;
+
   if (current_layout -> count == 1) {
-    current_layout -> windows[0].x = 0;
-    current_layout -> windows[0].y = 0;
-    current_layout -> windows[0].width = screen_width - 2 * current_window_border_width;
-    current_layout -> windows[0].height = screen_height - 2 * current_window_border_width;
+    current_layout -> windows[0].x = OUTER_GAP;
+    current_layout -> windows[0].y = OUTER_GAP;
+    current_layout -> windows[0].width = usable_width;
+    current_layout -> windows[0].height = usable_height;
   } else {
-    int master_width = screen_width / 2;
-    int stack_width = screen_width - master_width;
-    int stack_height = screen_height / (current_layout -> count - 1);
+    int master_width = (usable_width / 2) - (INNER_GAP / 2);
+    int stack_width = (usable_width - master_width) - INNER_GAP;
+    int stack_height = (usable_height - INNER_GAP * (current_layout -> count - 2)) / (current_layout -> count - 1);
 
     for (int i = 0; i < current_layout -> count; i++) {
-      current_window_border_width = current_layout -> windows[i].border_width;
-
       if (current_layout -> windows[i].window == current_layout -> master) {
-        current_layout -> windows[i].x = 0;
-        current_layout -> windows[i].y = 0;
-        current_layout -> windows[i].width = master_width - 2 * current_window_border_width;
-        current_layout -> windows[i].height = screen_height - 2 * current_window_border_width;
+        current_layout -> windows[i].x = OUTER_GAP;
+        current_layout -> windows[i].y = OUTER_GAP;
+        current_layout -> windows[i].width = master_width;
+        current_layout -> windows[i].height = usable_height;
       } else {
-        current_layout -> windows[i].x = master_width;
-        current_layout -> windows[i].y = stack_height * (i - 1);
-        current_layout -> windows[i].width = stack_width - 2 * current_window_border_width;
-        current_layout -> windows[i].height = stack_height - 2 * current_window_border_width;
+        current_layout -> windows[i].x = OUTER_GAP + master_width + INNER_GAP;
+        current_layout -> windows[i].y = OUTER_GAP + (stack_height + INNER_GAP) * (i - 1);
+        current_layout -> windows[i].width = stack_width;
+        current_layout -> windows[i].height = stack_height;
       }
     }
   }
@@ -155,8 +155,10 @@ void apply_layout(Display * dpy) {
   TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
   for (int i = 0; i < current_layout -> count; i++) {
     XMoveResizeWindow(dpy, current_layout -> windows[i].window,
-      current_layout -> windows[i].x, current_layout -> windows[i].y,
-      current_layout -> windows[i].width, current_layout -> windows[i].height);
+      current_layout -> windows[i].x,
+      current_layout -> windows[i].y,
+      current_layout -> windows[i].width,
+      current_layout -> windows[i].height);
   }
 }
 

@@ -47,6 +47,65 @@ WorkspaceManager;
 
 WorkspaceManager workspace_manager;
 
+// EMWH
+Atom _NET_SUPPORTED, _NET_WM_NAME, _NET_WM_STATE, _NET_WM_STATE_FULLSCREEN, _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_NORMAL, _NET_ACTIVE_WINDOW;
+
+void init_emwh_atoms(Display * dpy) {
+  _NET_SUPPORTED = XInternAtom(dpy, "_NET_SUPPORTED", False);
+  _NET_WM_NAME = XInternAtom(dpy, "_NET_WM_NAME", False);
+  _NET_WM_STATE = XInternAtom(dpy, "_NET_WM_STATE", False);
+  _NET_WM_STATE_FULLSCREEN = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
+  _NET_WM_WINDOW_TYPE = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+  _NET_WM_WINDOW_TYPE_NORMAL = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_NORMAL", False);
+  _NET_ACTIVE_WINDOW = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+}
+
+void set_supported_atoms(Window root, Display * dpy) {
+  Atom supported_atoms[] = {
+    _NET_WM_NAME,
+    _NET_WM_STATE,
+    _NET_WM_STATE_FULLSCREEN,
+    _NET_WM_WINDOW_TYPE,
+    _NET_WM_WINDOW_TYPE_NORMAL,
+    _NET_ACTIVE_WINDOW,
+  };
+  XChangeProperty(dpy, root, _NET_SUPPORTED, XA_ATOM, 32, PropModeReplace,
+    (unsigned char * ) supported_atoms, sizeof(supported_atoms) / sizeof(Atom));
+}
+
+void set_ewmh_properties(Window window, Display * dpy) {
+  // Set _NET_WM_NAME
+  const char * name = WM_NAME;
+  XChangeProperty(dpy, window, _NET_WM_NAME, XA_STRING, 8, PropModeReplace,
+    (unsigned char * ) name, strlen(name));
+
+  // Set _NET_WM_WINDOW_TYPE
+  Atom window_type = _NET_WM_WINDOW_TYPE_NORMAL;
+  XChangeProperty(dpy, window, _NET_WM_WINDOW_TYPE, XA_ATOM, 32, PropModeReplace,
+    (unsigned char * ) & window_type, 1);
+}
+
+void handle_client_message(XEvent * event) {
+  if (event -> xclient.message_type == _NET_WM_STATE) {
+    Atom action = (Atom) event -> xclient.data.l[0];
+    Atom property = (Atom) event -> xclient.data.l[1];
+
+    if (property == _NET_WM_STATE_FULLSCREEN) {
+      if (action == 1) { // _NET_WM_STATE_ADD
+        // Code to make the window fullscreen
+      } else if (action == 0) { // _NET_WM_STATE_REMOVE
+        // Code to exit fullscreen
+      }
+    }
+  } else if (event -> xclient.message_type == _NET_ACTIVE_WINDOW) {
+    // Code to focus the window
+  }
+}
+
+void setup_root_window(Window root, Display * dpy) {
+  set_supported_atoms(root, dpy);
+}
+
 // Window decorations
 void hex_to_rgb(const char * hex, XColor * color, Display * dpy) {
   unsigned int r, g, b;
@@ -115,7 +174,6 @@ void focus_prev_window(Display * dpy) {
   XSetInputFocus(dpy, current_layout -> windows[index].window, RevertToPointerRoot, CurrentTime);
 }
 
-
 // Tiling functions
 void init_layout() {
   layout.count = 0;
@@ -161,7 +219,7 @@ void remove_window_from_layout(Window window, TilingLayout * layout, Display * d
     }
     printf("Window 0x%lx removed. Total windows: %d\n", window, layout -> count);
   }
-  if (layout->count > 0) {
+  if (layout -> count > 0) {
     focus_next_window(dpy);
   }
 }
@@ -270,7 +328,6 @@ void remove_window_from_current_workspace(Display * dpy, Window window) {
   apply_layout(dpy);
 }
 
-
 void setup_keybindings(Display * dpy, Window root) {
   for (int i = 0; i < NUM_KEYBINDINGS; i++) {
     KeyCode keycode = XKeysymToKeycode(dpy, keybindings[i].keysym);
@@ -296,15 +353,6 @@ void set_default_cursor(Display * dpy, Window root) {
   Cursor cursor;
   cursor = XCreateFontCursor(dpy, XC_left_ptr);
   XDefineCursor(dpy, root, cursor);
-  XFlush(dpy);
-}
-
-// Set wm name for fetches to use
-void set_window_manager_name(Display * dpy, Window root,
-  const char * wm_name) {
-  Atom wmNameAtom = XInternAtom(dpy, "_NET_WM_NAME", False);
-  XChangeProperty(dpy, root, wmNameAtom, XA_STRING, 8, PropModeReplace,
-    (unsigned char * ) wm_name, strlen(wm_name));
   XFlush(dpy);
 }
 
@@ -504,7 +552,10 @@ void handle_events(Display * dpy, Window root, int scr) {
       printf("Map Request\n");
       handle_map_request(ev, dpy);
       raise_window(dpy, ev.xmaprequest.window);
+      set_ewmh_properties(ev.xmap.window, dpy);
       break;
+    case ClientMessage:
+      handle_client_message(&ev);
     case UnmapNotify:
       printf("Unmap Notify\n");
       handle_unmap_request(ev, dpy);
@@ -588,8 +639,8 @@ int main() {
   init_layout();
   init_workspace_manager();
   setup_keybindings(dpy, root);
+  setup_root_window(root, dpy);
   set_default_cursor(dpy, root);
-  set_window_manager_name(dpy, root, WM_NAME);
 
   handle_events(dpy, root, scr);
 

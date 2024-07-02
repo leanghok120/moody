@@ -71,6 +71,51 @@ void draw_window_border(Display * dpy, Window window, int border_width,
   XSetWindowBorderWidth(dpy, window, border_width);
 }
 
+void focus_next_window(Display * dpy) {
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  if (current_layout -> count == 0) return; // No windows
+
+  Window focused_window;
+  int revert_to;
+  XGetInputFocus(dpy, & focused_window, & revert_to);
+
+  int index = -1;
+  for (int i = 0; current_layout -> count; i++) {
+    if (current_layout -> windows[i].window == focused_window) {
+      index = i;
+      break;
+    }
+  }
+
+  // Focus the next window in the list
+  index = (index + 1) % current_layout -> count;
+  XRaiseWindow(dpy, current_layout -> windows[index].window);
+  XSetInputFocus(dpy, current_layout -> windows[index].window, RevertToPointerRoot, CurrentTime);
+}
+
+void focus_prev_window(Display * dpy) {
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  if (current_layout -> count == 0) return; // No windows to focus on
+
+  Window focused_window;
+  int revert_to;
+  XGetInputFocus(dpy, & focused_window, & revert_to);
+
+  int index = -1;
+  for (int i = 0; i < current_layout -> count; i++) {
+    if (current_layout -> windows[i].window == focused_window) {
+      index = i;
+      break;
+    }
+  }
+
+  // Focus the previous window in the list
+  index = (index - 1 + current_layout -> count) % current_layout -> count;
+  XRaiseWindow(dpy, current_layout -> windows[index].window);
+  XSetInputFocus(dpy, current_layout -> windows[index].window, RevertToPointerRoot, CurrentTime);
+}
+
+
 // Tiling functions
 void init_layout() {
   layout.count = 0;
@@ -99,7 +144,7 @@ void add_window_to_layout(Display * dpy, Window window, TilingLayout * layout) {
   }
 }
 
-void remove_window_from_layout(Window window, TilingLayout * layout) {
+void remove_window_from_layout(Window window, TilingLayout * layout, Display * dpy) {
   int found = 0;
   for (int i = 0; i < layout -> count; i++) {
     if (layout -> windows[i].window == window) {
@@ -115,6 +160,9 @@ void remove_window_from_layout(Window window, TilingLayout * layout) {
       layout -> master = (layout -> count > 0) ? layout -> windows[0].window : None;
     }
     printf("Window 0x%lx removed. Total windows: %d\n", window, layout -> count);
+  }
+  if (layout->count > 0) {
+    focus_next_window(dpy);
   }
 }
 
@@ -216,55 +264,12 @@ void add_window_to_current_workspace(Display * dpy, Window window) {
 
 void remove_window_from_current_workspace(Display * dpy, Window window) {
   TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
-  remove_window_from_layout(window, current_layout);
+  remove_window_from_layout(window, current_layout, dpy);
   XUnmapWindow(dpy, window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
 }
 
-void focus_next_window(Display * dpy) {
-  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
-  if (current_layout -> count == 0) return; // No windows
-
-  Window focused_window;
-  int revert_to;
-  XGetInputFocus(dpy, & focused_window, & revert_to);
-
-  int index = -1;
-  for (int i = 0; current_layout -> count; i++) {
-    if (current_layout -> windows[i].window == focused_window) {
-      index = i;
-      break;
-    }
-  }
-
-  // Focus the next window in the list
-  index = (index + 1) % current_layout -> count;
-  XRaiseWindow(dpy, current_layout -> windows[index].window);
-  XSetInputFocus(dpy, current_layout -> windows[index].window, RevertToPointerRoot, CurrentTime);
-}
-
-void focus_prev_window(Display * dpy) {
-  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
-  if (current_layout -> count == 0) return; // No windows to focus on
-
-  Window focused_window;
-  int revert_to;
-  XGetInputFocus(dpy, & focused_window, & revert_to);
-
-  int index = -1;
-  for (int i = 0; i < current_layout -> count; i++) {
-    if (current_layout -> windows[i].window == focused_window) {
-      index = i;
-      break;
-    }
-  }
-
-  // Focus the previous window in the list
-  index = (index - 1 + current_layout -> count) % current_layout -> count;
-  XRaiseWindow(dpy, current_layout -> windows[index].window);
-  XSetInputFocus(dpy, current_layout -> windows[index].window, RevertToPointerRoot, CurrentTime);
-}
 
 void setup_keybindings(Display * dpy, Window root) {
   for (int i = 0; i < NUM_KEYBINDINGS; i++) {
@@ -323,8 +328,11 @@ void handle_map_request(XEvent ev, Display * dpy) {
 }
 
 void handle_unmap_request(XEvent ev, Display * dpy) {
-  remove_window_from_layout(ev.xunmap.window, & workspace_manager.layouts[workspace_manager.current_workspace]);
+  remove_window_from_layout(ev.xunmap.window, & workspace_manager.layouts[workspace_manager.current_workspace], dpy);
   remove_window_from_current_workspace(dpy, ev.xunmap.window);
+
+  focus_next_window(dpy);
+
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
 }

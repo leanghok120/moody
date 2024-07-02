@@ -62,9 +62,10 @@ void hex_to_rgb(const char * hex, XColor * color, Display * dpy) {
   XAllocColor(dpy, DefaultColormap(dpy, DefaultScreen(dpy)), color);
 }
 
-void draw_window_border(Display * dpy, Window window, int border_width, const char *color_hex) {
+void draw_window_border(Display * dpy, Window window, int border_width,
+  const char * color_hex) {
   XColor color;
-  hex_to_rgb(color_hex, &color, dpy);
+  hex_to_rgb(color_hex, & color, dpy);
 
   XSetWindowBorder(dpy, window, color.pixel);
   XSetWindowBorderWidth(dpy, window, border_width);
@@ -133,7 +134,7 @@ void arrange_window(Display * dpy, int screen_width, int screen_height) {
     int stack_height = screen_height / (current_layout -> count - 1);
 
     for (int i = 0; i < current_layout -> count; i++) {
-      current_window_border_width = current_layout->windows[i].border_width;
+      current_window_border_width = current_layout -> windows[i].border_width;
 
       if (current_layout -> windows[i].window == current_layout -> master) {
         current_layout -> windows[i].x = 0;
@@ -176,8 +177,8 @@ void switch_workspace(Display * dpy, int workspace_index) {
     return;
   }
 
-  TilingLayout *current_layout = &workspace_manager.layouts[workspace_manager.current_workspace];
-  TilingLayout *new_layout = &workspace_manager.layouts[workspace_index];
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  TilingLayout * new_layout = & workspace_manager.layouts[workspace_index];
 
   // Hide windows in current workspace
   for (int i = 0; i < current_layout -> count; i++) {
@@ -192,8 +193,8 @@ void switch_workspace(Display * dpy, int workspace_index) {
     XMapWindow(dpy, new_layout -> windows[i].window);
   }
 
-  for (int i = new_layout->count - 1; i >= 0; i--) {
-      XRaiseWindow(dpy, new_layout->windows[i].window);
+  for (int i = new_layout -> count - 1; i >= 0; i--) {
+    XRaiseWindow(dpy, new_layout -> windows[i].window);
   }
 
   // Reapply layout for the new workspace
@@ -219,6 +220,50 @@ void remove_window_from_current_workspace(Display * dpy, Window window) {
   apply_layout(dpy);
 }
 
+void focus_next_window(Display * dpy) {
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  if (current_layout -> count == 0) return; // No windows
+
+  Window focused_window;
+  int revert_to;
+  XGetInputFocus(dpy, & focused_window, & revert_to);
+
+  int index = -1;
+  for (int i = 0; current_layout -> count; i++) {
+    if (current_layout -> windows[i].window == focused_window) {
+      index = i;
+      break;
+    }
+  }
+
+  // Focus the next window in the list
+  index = (index + 1) % current_layout -> count;
+  XRaiseWindow(dpy, current_layout -> windows[index].window);
+  XSetInputFocus(dpy, current_layout -> windows[index].window, RevertToPointerRoot, CurrentTime);
+}
+
+void focus_prev_window(Display * dpy) {
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  if (current_layout -> count == 0) return; // No windows to focus on
+
+  Window focused_window;
+  int revert_to;
+  XGetInputFocus(dpy, & focused_window, & revert_to);
+
+  int index = -1;
+  for (int i = 0; i < current_layout -> count; i++) {
+    if (current_layout -> windows[i].window == focused_window) {
+      index = i;
+      break;
+    }
+  }
+
+  // Focus the previous window in the list
+  index = (index - 1 + current_layout -> count) % current_layout -> count;
+  XRaiseWindow(dpy, current_layout -> windows[index].window);
+  XSetInputFocus(dpy, current_layout -> windows[index].window, RevertToPointerRoot, CurrentTime);
+}
+
 void setup_keybindings(Display * dpy, Window root) {
   for (int i = 0; i < NUM_KEYBINDINGS; i++) {
     KeyCode keycode = XKeysymToKeycode(dpy, keybindings[i].keysym);
@@ -233,6 +278,10 @@ void setup_keybindings(Display * dpy, Window root) {
 
   // Window keybindings
   XGrabKey(dpy, XKeysymToKeycode(dpy, KILL_KEY), MODIFIER, root, True, GrabModeAsync, GrabModeAsync);
+
+  // Focus keybindings
+  XGrabKey(dpy, XKeysymToKeycode(dpy, NEXT_WINDOW_KEY), MODIFIER, root, True, GrabModeAsync, GrabModeAsync);
+  XGrabKey(dpy, XKeysymToKeycode(dpy, PREV_WINDOW_KEY), MODIFIER, root, True, GrabModeAsync, GrabModeAsync);
 }
 
 // Set Cursor font to avoid no cursor
@@ -400,6 +449,18 @@ void handle_keypress_event(XEvent ev, Display * dpy) {
   // Kill focused window
   if (keysym == KILL_KEY && (ev.xkey.state & MODIFIER)) {
     kill_focused_window(dpy);
+    return;
+  }
+
+  // Focus next window
+  if (keysym == NEXT_WINDOW_KEY && (ev.xkey.state & MODIFIER)) {
+    focus_next_window(dpy);
+    return;
+  }
+
+  // Focus previous window
+  if (keysym == PREV_WINDOW_KEY && (ev.xkey.state & MODIFIER)) {
+    focus_prev_window(dpy);
     return;
   }
 

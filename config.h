@@ -20,9 +20,9 @@
 // Windows
 #define DEFAULT_WINDOW_WIDTH 800
 #define DEFAULT_WINDOW_HEIGHT 800
-#define MAX_WINDOWS 500 // Set max windows
+#define MAX_WINDOWS 500 // Set max windows per workspace
 #define BORDER_WIDTH 4
-#define BORDER_COLOR "#000000" // Set border color to white
+#define BORDER_COLOR "#ffffff" // Set border color to white
 
 // Keybindings
 typedef struct {
@@ -35,9 +35,9 @@ typedef struct {
 #define KILL_KEY XK_q // mod+q for killing the current window
 
 static Keybinding keybindings[] = {
-{ XK_Return, MODIFIER, "xterm", -1 },           // mod+return to open xterm (terminal)
-{ XK_B, MODIFIER, "firefox", -1 },              // mod+b to open firefox
-{ XK_space, MODIFIER, "rofi -show drun", -1 },  // mod+space to open rofi (app launcher)
+  { XK_Return, MODIFIER, "xterm", -1 },           // mod+return to open xterm (terminal)
+  { XK_B, MODIFIER, "firefox", -1 },              // mod+b to open firefox
+  { XK_space, MODIFIER, "rofi -show drun", -1 },  // mod+space to open rofi (app launcher)
 
   // Workspace
   { XK_1, MODIFIER, NULL, 1 },                     // mod+1 to switch to workspace 1

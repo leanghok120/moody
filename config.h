@@ -39,6 +39,7 @@ typedef struct {
 } Keybinding;
 
 // Care about this :)
+
 #define KILL_KEY XK_q // mod+q for killing the current window
 #define NEXT_WINDOW_KEY XK_k // mod+k to focus next window
 #define PREV_WINDOW_KEY XK_j // mod+j to focus previous window
@@ -47,6 +48,10 @@ static Keybinding keybindings[] = {
   { XK_Return, MODIFIER, "xterm", -1 },           // mod+return to open xterm (terminal)
   { XK_B, MODIFIER, "firefox", -1 },              // mod+b to open firefox
   { XK_space, MODIFIER, "rofi -show drun", -1 },  // mod+space to open rofi (app launcher)
+
+  { XK_F12, MODIFIER, "pactl set-sink-volume @DEFAULT_SINK@ +5% && $refresh_i3status" },   // mod+f12 to increase volume by 5%
+  { XK_F11, MODIFIER, "pactl set-sink-volume @DEFAULT_SINK@ -5% && $refresh_i3status" },   // mod+f11 to increase volume by 5%
+  { XK_F10, MODIFIER, "pactl set-sink-mute @DEFAULT_SINK@ toggle && $refresh_i3status" },  // mod+f10 to mute
 
   // Workspace
   { XK_1, MODIFIER, NULL, 1 },                     // mod+1 to switch to workspace 1

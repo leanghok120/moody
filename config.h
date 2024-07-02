@@ -24,6 +24,10 @@
 #define BORDER_WIDTH 4
 #define BORDER_COLOR "#ffffff" // Set border color to white
 
+// Gaps
+#define INNER_GAP 10 // Gap between windows
+#define OUTER_GAP 20 // Gap between windows and screen edge
+
 // Keybindings
 typedef struct {
   KeySym keysym;

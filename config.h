@@ -29,6 +29,8 @@
 #define OUTER_GAP 20 // Gap between windows and screen edge
 
 // Keybindings
+
+// Dont care about this
 typedef struct {
   KeySym keysym;
   unsigned int modifier;
@@ -36,6 +38,7 @@ typedef struct {
   int workspace; // Workspace number, -1  for now workspace change
 } Keybinding;
 
+// Care about this :)
 #define KILL_KEY XK_q // mod+q for killing the current window
 #define NEXT_WINDOW_KEY XK_k // mod+k to focus next window
 #define PREV_WINDOW_KEY XK_j // mod+j to focus previous window

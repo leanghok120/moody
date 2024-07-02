@@ -11,6 +11,7 @@ Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is
 - [x] Basic Event Handling
 - [x] Windows management (moving, resizing)
 - [x] Windows tiling
+- [ ] Windows gaps (In progress)
 - [x] Windows navigation
 - [x] Multiple workspaces
 - [x] Windows decoration
@@ -18,7 +19,7 @@ Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is
 - [x] Startup commands
 - [x] Configurations
 - [x] Focus on hover
-- [ ] Small improvements
+- [ ] Small improvements (In progress)
     - [ ] EMWH stuff
     - [ ] Focus other window after killed current window
     - [ ] Some windows are not meant to be tiled

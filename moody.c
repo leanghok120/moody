@@ -139,17 +139,26 @@ void focus_next_window(Display * dpy) {
   XGetInputFocus(dpy, & focused_window, & revert_to);
 
   int index = -1;
-  for (int i = 0; current_layout -> count; i++) {
+  for (int i = 0; i < current_layout -> count; i++) { // Corrected loop condition
     if (current_layout -> windows[i].window == focused_window) {
       index = i;
       break;
     }
   }
 
-  // Focus the next window in the list
-  index = (index + 1) % current_layout -> count;
-  XRaiseWindow(dpy, current_layout -> windows[index].window);
-  XSetInputFocus(dpy, current_layout -> windows[index].window, RevertToPointerRoot, CurrentTime);
+  if (index == -1) {
+    // Focused window not found in the list, default to the first window
+    index = 0;
+  } else {
+    // Focus the next window in the list
+    index = (index + 1) % current_layout -> count;
+  }
+
+  Window next_window = current_layout -> windows[index].window;
+  if (next_window) {
+    XRaiseWindow(dpy, next_window);
+    XSetInputFocus(dpy, next_window, RevertToPointerRoot, CurrentTime);
+  }
 }
 
 void focus_prev_window(Display * dpy) {
@@ -168,10 +177,19 @@ void focus_prev_window(Display * dpy) {
     }
   }
 
-  // Focus the previous window in the list
-  index = (index - 1 + current_layout -> count) % current_layout -> count;
-  XRaiseWindow(dpy, current_layout -> windows[index].window);
-  XSetInputFocus(dpy, current_layout -> windows[index].window, RevertToPointerRoot, CurrentTime);
+  if (index == -1) {
+    // Focused window not found in the list, default to the last window
+    index = current_layout -> count - 1;
+  } else {
+    // Focus the previous window in the list
+    index = (index - 1 + current_layout -> count) % current_layout -> count;
+  }
+
+  Window prev_window = current_layout -> windows[index].window;
+  if (prev_window) {
+    XRaiseWindow(dpy, prev_window);
+    XSetInputFocus(dpy, prev_window, RevertToPointerRoot, CurrentTime);
+  }
 }
 
 // Tiling functions

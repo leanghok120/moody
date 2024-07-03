@@ -54,6 +54,13 @@ make sure you're in the moody directory and run:
 sudo make clean build install
 ```
 
+3. Start moody
+
+add this into your .xinitrc (no need to include startup commands)
+```bash
+moody
+```
+
 ### Inspiration
 
 I got this idea of creating my own tiling windows manager in a dream. After I woke up, I decided to create moody since I had no projects to work on.

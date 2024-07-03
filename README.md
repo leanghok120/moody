@@ -8,7 +8,6 @@ Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is
 
 ### Features
 
-- [x] Basic Event Handling
 - [x] Windows management (moving, resizing)
 - [x] Windows tiling
 - [x] Windows gaps
@@ -19,17 +18,43 @@ Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is
 - [x] Startup commands
 - [x] Configurations
 - [x] Focus on hover
-- [ ] Small improvements (In progress)
-    - [ ] EMWH stuff (port to xcb first)
-    - [ ] More configuration
-    - [x] Focus other window after killed current window
-    - [ ] Some windows are not meant to be tiled
-    - [x] More keybindings
-- [ ] Installation
+
+### Dependecies
+
+1. Arch
+
+```bash
+sudo pacman -S libx11 libxrandr libxinerama libxcursor libxext libxt xorg-server-devel
+```
+
+2. Ubuntu/Debian
+
+```bash
+sudo apt-get install -y libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libxt-dev xorg-dev
+```
+
+3. Fedora/Red Hat
+
+```bash
+sudo dnf install -y libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXext-devel libXt-devel xorg-x11-server-devel
+```
 
 ### Installation
 
-Sadly, moody is still under development since there are alot of bugs and features yet to be finished.
+1. Clone this repo
+
+```bash
+git clone git@github.com:leanghok120/moody.git
+cd moody
+```
+
+2. Install moody
+
+make sure you're in the moody directory and run:
+
+```bash
+sudo make clean build install
+```
 
 ### Inspiration
 

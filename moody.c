@@ -47,65 +47,6 @@ WorkspaceManager;
 
 WorkspaceManager workspace_manager;
 
-// EMWH
-Atom _NET_SUPPORTED, _NET_WM_NAME, _NET_WM_STATE, _NET_WM_STATE_FULLSCREEN, _NET_WM_WINDOW_TYPE, _NET_WM_WINDOW_TYPE_NORMAL, _NET_ACTIVE_WINDOW;
-
-void init_emwh_atoms(Display * dpy) {
-  _NET_SUPPORTED = XInternAtom(dpy, "_NET_SUPPORTED", False);
-  _NET_WM_NAME = XInternAtom(dpy, "_NET_WM_NAME", False);
-  _NET_WM_STATE = XInternAtom(dpy, "_NET_WM_STATE", False);
-  _NET_WM_STATE_FULLSCREEN = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
-  _NET_WM_WINDOW_TYPE = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
-  _NET_WM_WINDOW_TYPE_NORMAL = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_NORMAL", False);
-  _NET_ACTIVE_WINDOW = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
-}
-
-void set_supported_atoms(Window root, Display * dpy) {
-  Atom supported_atoms[] = {
-    _NET_WM_NAME,
-    _NET_WM_STATE,
-    _NET_WM_STATE_FULLSCREEN,
-    _NET_WM_WINDOW_TYPE,
-    _NET_WM_WINDOW_TYPE_NORMAL,
-    _NET_ACTIVE_WINDOW,
-  };
-  XChangeProperty(dpy, root, _NET_SUPPORTED, XA_ATOM, 32, PropModeReplace,
-    (unsigned char * ) supported_atoms, sizeof(supported_atoms) / sizeof(Atom));
-}
-
-void set_ewmh_properties(Window window, Display * dpy) {
-  // Set _NET_WM_NAME
-  const char * name = WM_NAME;
-  XChangeProperty(dpy, window, _NET_WM_NAME, XA_STRING, 8, PropModeReplace,
-    (unsigned char * ) name, strlen(name));
-
-  // Set _NET_WM_WINDOW_TYPE
-  Atom window_type = _NET_WM_WINDOW_TYPE_NORMAL;
-  XChangeProperty(dpy, window, _NET_WM_WINDOW_TYPE, XA_ATOM, 32, PropModeReplace,
-    (unsigned char * ) & window_type, 1);
-}
-
-void handle_client_message(XEvent * event) {
-  if (event -> xclient.message_type == _NET_WM_STATE) {
-    Atom action = (Atom) event -> xclient.data.l[0];
-    Atom property = (Atom) event -> xclient.data.l[1];
-
-    if (property == _NET_WM_STATE_FULLSCREEN) {
-      if (action == 1) { // _NET_WM_STATE_ADD
-        // Code to make the window fullscreen
-      } else if (action == 0) { // _NET_WM_STATE_REMOVE
-        // Code to exit fullscreen
-      }
-    }
-  } else if (event -> xclient.message_type == _NET_ACTIVE_WINDOW) {
-    // Code to focus the window
-  }
-}
-
-void setup_root_window(Window root, Display * dpy) {
-  set_supported_atoms(root, dpy);
-}
-
 // Window decorations
 void hex_to_rgb(const char * hex, XColor * color, Display * dpy) {
   unsigned int r, g, b;
@@ -196,6 +137,40 @@ void focus_prev_window(Display * dpy) {
 void init_layout() {
   layout.count = 0;
   layout.master = None;
+}
+
+Bool is_floating_window(Display * dpy, Window win) {
+  Atom net_wm_window_type = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", True);
+  Atom net_wm_window_type_dock = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", True);
+  Atom net_wm_window_type_dialog = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", True);
+
+  if (net_wm_window_type != None) {
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems, bytes_after;
+    unsigned char * prop = NULL;
+
+    if (XGetWindowProperty(dpy, win, net_wm_window_type, 0, 1, False, XA_ATOM, & actual_type, & actual_format, & nitems, & bytes_after, & prop) == Success) {
+      if (nitems > 0) {
+        Atom window_type = * (Atom * ) prop;
+        XFree(prop);
+        return window_type == net_wm_window_type_dock || window_type == net_wm_window_type_dialog;
+      }
+    }
+  }
+
+  XClassHint class_hint;
+  if (XGetClassHint(dpy, win, & class_hint)) {
+    if (strcmp(class_hint.res_class, "Dock") == 0 || strcmp(class_hint.res_class, "Toolbar") == 0) {
+      XFree(class_hint.res_name);
+      XFree(class_hint.res_class);
+      return True;
+    }
+    XFree(class_hint.res_name);
+    XFree(class_hint.res_class);
+  }
+
+  return False;
 }
 
 void add_window_to_layout(Display * dpy, Window window, TilingLayout * layout) {
@@ -570,10 +545,7 @@ void handle_events(Display * dpy, Window root, int scr) {
       printf("Map Request\n");
       handle_map_request(ev, dpy);
       raise_window(dpy, ev.xmaprequest.window);
-      set_ewmh_properties(ev.xmap.window, dpy);
       break;
-    case ClientMessage:
-      handle_client_message(&ev);
     case UnmapNotify:
       printf("Unmap Notify\n");
       handle_unmap_request(ev, dpy);
@@ -657,7 +629,6 @@ int main() {
   init_layout();
   init_workspace_manager();
   setup_keybindings(dpy, root);
-  setup_root_window(root, dpy);
   set_default_cursor(dpy, root);
 
   handle_events(dpy, root, scr);

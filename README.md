@@ -18,6 +18,12 @@ Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is
 - [x] Focus on hover
 - [ ] EWMH (once ported xcb)
 
+### Notes
+
+- Bars are not supported (yet)
+- EWMH is not supported but once moody is ported to xcb, EWMH is going to be supported
+- Moody is not meant to be better than other tiling windows manager (just a project built by a 13 year old)
+
 ### Dependencies
 
 1. Arch

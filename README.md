@@ -40,14 +40,14 @@ sudo dnf install -y libX11-devel libXrandr-devel libXinerama-devel libXcursor-de
 
 ### Installation
 
-1. Clone this repo
+#### 1. Clone this repo
 
 ```bash
 git clone git@github.com:leanghok120/moody.git
 cd moody
 ```
 
-2. Install moody
+#### 2. Install moody
 
 make sure you're in the moody directory and run:
 
@@ -55,7 +55,7 @@ make sure you're in the moody directory and run:
 sudo make clean build install
 ```
 
-3. Start moody
+#### 3. Start moody
 
 #### startx
 

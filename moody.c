@@ -270,6 +270,38 @@ void init_workspace_manager() {
   }
 }
 
+void move_window_to_workspace(Display * dpy, int target_workspace) {
+  if (target_workspace < 1 || target_workspace > MAX_WORKSPACES) return;
+
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  Window focused_window;
+  int revert_to;
+
+  // Get the currently focused window
+  XGetInputFocus(dpy, & focused_window, & revert_to);
+
+  if (focused_window == None || focused_window == PointerRoot) {
+    printf("No window is focused\n");
+    return;
+  }
+
+  // Remove window from current workspace
+  remove_window_from_layout(focused_window, current_layout, dpy);
+  XUnmapWindow(dpy, focused_window);
+
+  // Add window to the target workspace
+  TilingLayout * target_layout = & workspace_manager.layouts[target_workspace];
+  add_window_to_layout(dpy, focused_window, target_layout);
+
+  // Set the window state to withdrawn to ensure it is managed correctly in the new workspace
+  XEvent ev;
+  ev.type = UnmapNotify;
+  ev.xunmap.window = focused_window;
+  XSendEvent(dpy, focused_window, False, StructureNotifyMask, & ev);
+
+  printf("Moved window 0x%lx to workspace %d\n", focused_window, target_workspace);
+}
+
 void switch_workspace(Display * dpy, int workspace_index) {
   if (workspace_index < 1 || workspace_index > MAX_WORKSPACES) return;
 
@@ -518,7 +550,9 @@ void handle_keypress_event(XEvent ev, Display * dpy) {
   // Get all keybindings for programs
   for (int i = 0; i < NUM_KEYBINDINGS; i++) {
     if (keysym == keybindings[i].keysym && (ev.xkey.state & keybindings[i].modifier)) {
-      if (keybindings[i].workspace != -1) {
+      if (keybindings[i].workspace != -1 && (ev.xkey.state & ShiftMask)) {
+        move_window_to_workspace(dpy, keybindings[i].workspace);
+      } else if (keybindings[i].workspace != -1) {
         switch_workspace(dpy, keybindings[i].workspace);
       } else if (keybindings[i].command) {
         // Execute the command
@@ -530,6 +564,7 @@ void handle_keypress_event(XEvent ev, Display * dpy) {
       return;
     }
   }
+
 }
 
 void handle_events(Display * dpy, Window root, int scr) {

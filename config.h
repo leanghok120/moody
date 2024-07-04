@@ -54,6 +54,7 @@ static Keybinding keybindings[] = {
   { XK_F10, MODIFIER, "pactl set-sink-mute @DEFAULT_SINK@ toggle", -1 },  // mod+f10 to mute
 
   // Workspace
+  // Switching
   { XK_1, MODIFIER, NULL, 1 },                     // mod+1 to switch to workspace 1
   { XK_2, MODIFIER, NULL, 2 },                     // mod+2 to switch to workspace 2
   { XK_3, MODIFIER, NULL, 3 },                     // mod+3 to switch to workspace 3
@@ -62,7 +63,18 @@ static Keybinding keybindings[] = {
   { XK_6, MODIFIER, NULL, 6 },                     // mod+6 to switch to workspace 6
   { XK_7, MODIFIER, NULL, 7 },                     // mod+7 to switch to workspace 7
   { XK_8, MODIFIER, NULL, 8 },                     // mod+8 to switch to workspace 8
-  { XK_9, MODIFIER, NULL, 9 }                      // mod+9 to switch to workspace 9
+  { XK_9, MODIFIER, NULL, 9 },                     // mod+9 to switch to workspace 9
+
+  // Moving window to
+  { XK_1, MODIFIER | ShiftMask, "move_to_workspace(dpy, 1)", -1 },      // mod+shift+1 to move window to workspace 1
+  { XK_2, MODIFIER | ShiftMask, "move_to_workspace(dpy, 2)", -1 },      // mod+shift+2 to move window to workspace 2
+  { XK_3, MODIFIER | ShiftMask, "move_to_workspace(dpy, 3)", -1 },      // mod+shift+3 to move window to workspace 3
+  { XK_4, MODIFIER | ShiftMask, "move_to_workspace(dpy, 4)", -1 },      // mod+shift+4 to move window to workspace 4
+  { XK_5, MODIFIER | ShiftMask, "move_to_workspace(dpy, 5)", -1 },      // mod+shift+5 to move window to workspace 5
+  { XK_6, MODIFIER | ShiftMask, "move_to_workspace(dpy, 6)", -1 },      // mod+shift+6 to move window to workspace 6
+  { XK_7, MODIFIER | ShiftMask, "move_to_workspace(dpy, 7)", -1 },      // mod+shift+7 to move window to workspace 7
+  { XK_8, MODIFIER | ShiftMask, "move_to_workspace(dpy, 8)", -1 },      // mod+shift+8 to move window to workspace 8
+  { XK_9, MODIFIER | ShiftMask, "move_to_workspace(dpy, 9)", -1 },      // mod+shift+9 to move window to workspace 9
 };
 
 #define NUM_KEYBINDINGS (sizeof(keybindings) / sizeof(Keybinding))

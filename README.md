@@ -29,19 +29,19 @@ Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is
 1. Arch
 
 ```bash
-sudo pacman -S libx11 libxrandr libxinerama libxcursor libxext libxt xorg-server-devel
+sudo pacman -S libx11 libxrandr libxinerama libxcursor libxext libxt xorg-server-devel xterm
 ```
 
 2. Ubuntu/Debian
 
 ```bash
-sudo apt-get install -y libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libxt-dev xorg-dev
+sudo apt-get install -y libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libxt-dev xorg-dev xterm
 ```
 
 3. Fedora/Red Hat
 
 ```bash
-sudo dnf install -y libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXext-devel libXt-devel xorg-x11-server-devel
+sudo dnf install -y libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXext-devel libXt-devel xorg-x11-server-devel xterm
 ```
 
 ### Installation

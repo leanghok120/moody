@@ -16,6 +16,7 @@ Moody is a minimal and cozy tiling windows manager written in C. Moody's goal is
 - [x] Startup commands
 - [x] Configurations
 - [x] Focus on hover
+- [ ] EWMH (once ported xcb)
 
 ### Dependencies
 
@@ -56,10 +57,28 @@ sudo make clean build install
 
 3. Start moody
 
+#### startx
+
 add this into your .xinitrc (no need to include startup commands)
 ```bash
 moody
 ```
+
+#### display manager
+
+you can also start moody with your display manager by adding a moody.desktop to /usr/share/xsessions/
+the contents of moody.desktop should look like this:
+
+```bash
+[Desktop Entry]
+Encoding=UTF-8
+Name=moody
+Comment=Cozy tiling window manager
+Exec=moody
+Type=XSession
+```
+
+Now, your display manager should show moody as a session and you can log into it
 
 ### Inspiration
 

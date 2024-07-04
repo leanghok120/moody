@@ -51,6 +51,7 @@ sudo dnf install -y libX11-devel libXrandr-devel libXinerama-devel libXcursor-de
 ```bash
 git clone git@github.com:leanghok120/moody.git
 cd moody
+rm -rf .git
 ```
 
 #### 2. Install moody

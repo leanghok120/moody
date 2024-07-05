@@ -16,12 +16,12 @@ Moody is a very minimal and simple tiling window manager written in C (by a 13 y
 - [x] Startup commands
 - [x] Configurations
 - [x] Focus on hover
-- [ ] EWMH (once ported xcb)
+- [ ] EWMH
 
 ### Notes
 
 - Bars are not supported (yet)
-- EWMH is not supported but once moody is ported to xcb, EWMH is going to be supported
+- EWMH is not supported (yet)
 - Moody is not meant to be better than other tiling windows manager (just a project built by a 13 year old)
 
 ### Dependencies

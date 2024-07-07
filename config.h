@@ -25,8 +25,8 @@
 #define BORDER_COLOR "#ffffff" // Set border color to white
 
 // Gaps
-#define INNER_GAP 10 // Gap between windows
-#define OUTER_GAP 20 // Gap between windows and screen edge
+#define INNER_GAP 20 // Gap between windows
+#define OUTER_GAP 30 // Gap between windows and screen edge
 
 // Keybindings
 
@@ -46,12 +46,15 @@ typedef struct {
 
 static Keybinding keybindings[] = {
   { XK_Return, MODIFIER, "xterm", -1 },           // mod+return to open xterm (terminal)
-  { XK_B, MODIFIER, "firefox", -1 },              // mod+b to open firefox
+  { XK_b, MODIFIER, "firefox", -1 },              // mod+b to open firefox
   { XK_space, MODIFIER, "rofi -show drun", -1 },  // mod+space to open rofi (app launcher)
 
   { XK_F12, MODIFIER, "pactl set-sink-volume @DEFAULT_SINK@ +5%", -1 },   // mod+f12 to increase volume by 5%
   { XK_F11, MODIFIER, "pactl set-sink-volume @DEFAULT_SINK@ -5%", -1 },   // mod+f11 to increase volume by 5%
   { XK_F10, MODIFIER, "pactl set-sink-mute @DEFAULT_SINK@ toggle", -1 },  // mod+f10 to mute
+
+  // Quit moody
+  { XK_q, MODIFIER|ShiftMask, "killall moody", -1 },  // mod+shift+q to quit moody
 
   // Workspace
   // Switching

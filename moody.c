@@ -177,25 +177,29 @@ Bool is_floating_window(Display * dpy, Window win) {
 }
 
 void add_window_to_layout(Display * dpy, Window window, TilingLayout * layout) {
-  if (layout -> count < MAX_WINDOWS) {
-    for (int i = 0; i < layout -> count; i++) {
-      if (layout -> windows[i].window == window) {
-        return; // Window already exists in layout
-      }
-    }
-
-    layout -> windows[layout -> count].window = window;
-    layout -> windows[layout -> count].border_width = BORDER_WIDTH;
-    draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
-    layout -> count++;
-
-    if (layout -> master == None) {
-      layout -> master = window;
-    }
-    printf("Window 0x%lx added. Total windows: %d\n", window, layout -> count);
-  } else {
+  if (layout -> count >= MAX_WINDOWS) {
     fprintf(stderr, "Window limit exceeded\n");
+    return;
   }
+
+  // Check if window already exists in layout
+  for (int i = 0; i < layout -> count; i++) {
+    if (layout -> windows[i].window == window) {
+      return; // Window already exists in layout
+    }
+  }
+
+  // Add window to layout
+  layout -> windows[layout -> count].window = window;
+  layout -> windows[layout -> count].border_width = BORDER_WIDTH;
+  draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
+  layout -> count++;
+
+  if (layout -> master == None) {
+    layout -> master = window;
+  }
+
+  printf("Window 0x%lx added. Total windows: %d\n", window, layout -> count);
 }
 
 void remove_window_from_layout(Window window, TilingLayout * layout, Display * dpy) {
@@ -228,6 +232,7 @@ void arrange_window(Display * dpy, int screen_width, int screen_height) {
   int usable_height = screen_height - 2 * OUTER_GAP;
 
   if (current_layout -> count == 1) {
+    // Single window occupies full screen
     current_layout -> windows[0].x = OUTER_GAP;
     current_layout -> windows[0].y = OUTER_GAP;
     current_layout -> windows[0].width = usable_width;
@@ -238,14 +243,14 @@ void arrange_window(Display * dpy, int screen_width, int screen_height) {
     int stack_height = (usable_height - INNER_GAP * (current_layout -> count - 2)) / (current_layout -> count - 1);
 
     for (int i = 0; i < current_layout -> count; i++) {
-      if (current_layout -> windows[i].window == current_layout -> master) {
+      if (current_layout->windows[i].window == current_layout->master) {
         current_layout -> windows[i].x = OUTER_GAP;
         current_layout -> windows[i].y = OUTER_GAP;
-        current_layout -> windows[i].width = master_width;
+        current_layout -> windows[i].width = stack_width;
         current_layout -> windows[i].height = usable_height;
       } else {
         current_layout -> windows[i].x = OUTER_GAP + master_width + INNER_GAP;
-        current_layout -> windows[i].y = OUTER_GAP + (stack_height + INNER_GAP) * (i - 1);
+        current_layout -> windows[i].y = OUTER_GAP + (stack_height + INNER_GAP) *  (i - 1);
         current_layout -> windows[i].width = stack_width;
         current_layout -> windows[i].height = stack_height;
       }

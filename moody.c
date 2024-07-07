@@ -27,6 +27,7 @@ typedef struct {
   int x, y;
   int width, height;
   int border_width;
+  int is_floating;
 }
 WindowInfo;
 
@@ -189,9 +190,12 @@ void add_window_to_layout(Display * dpy, Window window, TilingLayout * layout) {
     }
   }
 
+  int is_floating = is_floating_window(dpy, window);
+
   // Add window to layout
   layout -> windows[layout -> count].window = window;
   layout -> windows[layout -> count].border_width = BORDER_WIDTH;
+  layout -> windows[layout -> count].is_floating = is_floating;
   draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
   layout -> count++;
 
@@ -226,33 +230,61 @@ void remove_window_from_layout(Window window, TilingLayout * layout, Display * d
 
 void arrange_window(Display * dpy, int screen_width, int screen_height) {
   TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
-  if (current_layout -> count == 0) return;
+  if (current_layout -> count == 0) return; // No windows to arrange
 
+  int tiling_count = 0;
+
+  // Count only non-floating windows
+  for (int i = 0; i < current_layout -> count; i++) {
+    if (!is_floating_window(dpy, current_layout -> windows[i].window)) {
+      tiling_count++;
+    }
+  }
+
+  // No windows to tile or only floating windows
+  if (tiling_count == 0) return;
+
+  // Calculate the usable area considering the gaps
   int usable_width = screen_width - 2 * OUTER_GAP;
   int usable_height = screen_height - 2 * OUTER_GAP;
 
-  if (current_layout -> count == 1) {
-    // Single window occupies full screen
-    current_layout -> windows[0].x = OUTER_GAP;
-    current_layout -> windows[0].y = OUTER_GAP;
-    current_layout -> windows[0].width = usable_width;
-    current_layout -> windows[0].height = usable_height;
-  } else {
-    int master_width = (usable_width / 2) - (INNER_GAP / 2);
-    int stack_width = (usable_width - master_width) - INNER_GAP;
-    int stack_height = (usable_height - INNER_GAP * (current_layout -> count - 2)) / (current_layout -> count - 1);
-
+  if (tiling_count == 1) {
+    // Only one non-floating window, make it full screen with gaps
     for (int i = 0; i < current_layout -> count; i++) {
-      if (current_layout->windows[i].window == current_layout->master) {
+      if (!is_floating_window(dpy, current_layout -> windows[i].window)) {
         current_layout -> windows[i].x = OUTER_GAP;
         current_layout -> windows[i].y = OUTER_GAP;
-        current_layout -> windows[i].width = stack_width;
+        current_layout -> windows[i].width = usable_width;
         current_layout -> windows[i].height = usable_height;
-      } else {
-        current_layout -> windows[i].x = OUTER_GAP + master_width + INNER_GAP;
-        current_layout -> windows[i].y = OUTER_GAP + (stack_height + INNER_GAP) *  (i - 1);
-        current_layout -> windows[i].width = stack_width;
-        current_layout -> windows[i].height = stack_height;
+        break;
+      }
+    }
+  } else {
+    // More than one window, apply tiling layout
+    int master_width = (usable_width / 2) - (INNER_GAP / 2);
+    int stack_width = (usable_width - master_width) - INNER_GAP;
+
+    // Avoid division by zero
+    int stack_height = (usable_height - INNER_GAP * (tiling_count - 2)) / (tiling_count - 1);
+    if (tiling_count == 2) {
+      stack_height = usable_height; // Special case for two windows
+    }
+
+    int tiling_index = 0;
+    for (int i = 0; i < current_layout -> count; i++) {
+      if (!is_floating_window(dpy, current_layout -> windows[i].window)) {
+        if (tiling_index == 0) {
+          current_layout -> windows[i].x = OUTER_GAP;
+          current_layout -> windows[i].y = OUTER_GAP;
+          current_layout -> windows[i].width = master_width;
+          current_layout -> windows[i].height = usable_height;
+        } else {
+          current_layout -> windows[i].x = OUTER_GAP + master_width + INNER_GAP;
+          current_layout -> windows[i].y = OUTER_GAP + (stack_height + INNER_GAP) * (tiling_index - 1);
+          current_layout -> windows[i].width = stack_width;
+          current_layout -> windows[i].height = stack_height;
+        }
+        tiling_index++;
       }
     }
   }
@@ -261,11 +293,14 @@ void arrange_window(Display * dpy, int screen_width, int screen_height) {
 void apply_layout(Display * dpy) {
   TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
   for (int i = 0; i < current_layout -> count; i++) {
-    XMoveResizeWindow(dpy, current_layout -> windows[i].window,
-      current_layout -> windows[i].x,
-      current_layout -> windows[i].y,
-      current_layout -> windows[i].width,
-      current_layout -> windows[i].height);
+    if (!current_layout -> windows[i].is_floating) {
+      XMoveResizeWindow(dpy, current_layout -> windows[i].window,
+        current_layout -> windows[i].x,
+        current_layout -> windows[i].y,
+        current_layout -> windows[i].width,
+        current_layout -> windows[i].height);
+
+    }
   }
 }
 

@@ -48,8 +48,9 @@ WorkspaceManager;
 
 WorkspaceManager workspace_manager;
 
-Atom net_supported;
-Atom net_wm_name;
+// EWMH properties
+Atom net_supported, net_wm_name, net_wm_state, net_wm_state_fullscreen, net_wm_desktop,
+net_client_list, net_current_desktop, net_number_of_desktops, net_active_window;
 
 // Window decorations
 void hex_to_rgb(const char * hex, XColor * color, Display * dpy) {
@@ -610,6 +611,26 @@ void handle_keypress_event(XEvent ev, Display * dpy) {
 
 }
 
+void handle_client_message(XEvent * e, Display * dpy) {
+  if (e -> xclient.message_type == net_wm_state) {
+    Window window = e -> xclient.window;
+    Atom state = (Atom) e -> xclient.data.l[1];
+    Bool add = e -> xclient.data.l[0] == 1;
+
+    if (state == net_wm_state_fullscreen) {
+      if (add) {
+        // Make window fullscreen
+        XMoveResizeWindow(dpy, window, 0, 0,
+                          XDisplayWidth(dpy, DefaultScreen(dpy)), XDisplayHeight(dpy, DefaultScreen(dpy)));
+      } else {
+        // Exit fullscreen
+        // Implementation depends on your window manager logic
+      }
+    }
+  }
+  // Handle other client messages as needed
+}
+
 void handle_events(Display * dpy, Window root, int scr) {
   DragState drag = {
     0
@@ -659,6 +680,9 @@ void handle_events(Display * dpy, Window root, int scr) {
     case KeyPress:
       handle_keypress_event(ev, dpy);
       break;
+    case ClientMessage:
+      handle_client_message(&ev, dpy);
+      break;
     default:
       printf("Other event type: %d\n", ev.type);
       break;
@@ -675,15 +699,30 @@ int handle_x_error(Display * dpy, XErrorEvent * error_event) {
   return 0;
 }
 
+// EWMH
 void init_ewmh_atoms(Display * dpy) {
   net_supported = XInternAtom(dpy, "_NET_SUPPORTED", False);
   net_wm_name = XInternAtom(dpy, "_NET_WM_NAME", False);
+  net_wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
+  net_wm_state_fullscreen = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
+  net_wm_desktop = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
+  net_client_list = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
+  net_current_desktop = XInternAtom(dpy, "_NET_CURRENT_DESKTOP", False);
+  net_number_of_desktops = XInternAtom(dpy, "_NET_NUMBER_OF_DESKTOPS", False);
+  net_active_window = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
 }
 
 void set_supported_atoms(Display * dpy, Window root) {
   Atom supported_atoms[] = {
     net_supported,
     net_wm_name,
+    net_wm_state,
+    net_wm_state_fullscreen,
+    net_wm_desktop,
+    net_client_list,
+    net_current_desktop,
+    net_number_of_desktops,
+    net_active_window,
   };
 
   XChangeProperty(dpy, root, net_supported, XA_ATOM, 32, PropModeReplace,
@@ -694,6 +733,26 @@ void set_window_title(Display * dpy, Window win,
   const char * title) {
   XChangeProperty(dpy, win, net_wm_name, XA_STRING, 8, PropModeReplace,
     (unsigned char * ) title, strlen(title));
+}
+
+void set_window_state(Window window, Atom state, Bool add, Display * dpy) {
+  XEvent e;
+  memset( & e, 0, sizeof(e));
+  e.type = ClientMessage;
+  e.xclient.window = window;
+  e.xclient.message_type = net_wm_state;
+  e.xclient.format = 32;
+  e.xclient.data.l[0] = add ? 1 : 0; // 1 for add, 0 for remove
+  e.xclient.data.l[1] = state;
+  XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureNotifyMask | SubstructureRedirectMask, & e);
+}
+
+void set_active_window(Window window, Display * dpy) {
+  XChangeProperty(dpy, DefaultRootWindow(dpy), net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char * ) & window, 1);
+}
+
+void update_client_list(Window * windows, int count, Display * dpy) {
+  XChangeProperty(dpy, DefaultRootWindow(dpy), net_client_list, XA_WINDOW, 32, PropModeReplace, (unsigned char * ) windows, count);
 }
 
 int main() {
@@ -726,6 +785,7 @@ int main() {
   system("/usr/bin/autostart.sh &");
 
   init_layout();
+
   // EWMH
   init_ewmh_atoms(dpy);
   set_supported_atoms(dpy, root);

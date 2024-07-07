@@ -1,5 +1,7 @@
 # MoodyWM
 
+![moody screenshot](./screenshots/no-bar.png)
+
 ## Overview
 
 Moody is a very minimal and simple tiling window manager written in C (by a 13 year old). Moody has only ~700 lines of code. Moody's goal is to be minimal yet usable.

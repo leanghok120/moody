@@ -47,6 +47,9 @@ WorkspaceManager;
 
 WorkspaceManager workspace_manager;
 
+Atom net_supported;
+Atom net_wm_name;
+
 // Window decorations
 void hex_to_rgb(const char * hex, XColor * color, Display * dpy) {
   unsigned int r, g, b;
@@ -632,6 +635,27 @@ int handle_x_error(Display * dpy, XErrorEvent * error_event) {
   return 0;
 }
 
+void init_ewmh_atoms(Display * dpy) {
+  net_supported = XInternAtom(dpy, "_NET_SUPPORTED", False);
+  net_wm_name = XInternAtom(dpy, "_NET_WM_NAME", False);
+}
+
+void set_supported_atoms(Display * dpy, Window root) {
+  Atom supported_atoms[] = {
+    net_supported,
+    net_wm_name,
+  };
+
+  XChangeProperty(dpy, root, net_supported, XA_ATOM, 32, PropModeReplace,
+    (unsigned char * ) supported_atoms, sizeof(supported_atoms) / sizeof(Atom));
+}
+
+void set_window_title(Display * dpy, Window win,
+  const char * title) {
+  XChangeProperty(dpy, win, net_wm_name, XA_STRING, 8, PropModeReplace,
+    (unsigned char * ) title, strlen(title));
+}
+
 int main() {
   Display * dpy;
   int scr;
@@ -662,6 +686,11 @@ int main() {
   system("/usr/bin/autostart.sh &");
 
   init_layout();
+  // EWMH
+  init_ewmh_atoms(dpy);
+  set_supported_atoms(dpy, root);
+  set_window_title(dpy, root, "moody");
+
   init_workspace_manager();
   setup_keybindings(dpy, root);
   set_default_cursor(dpy, root);

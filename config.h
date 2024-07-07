@@ -54,7 +54,7 @@ static Keybinding keybindings[] = {
   { XK_F10, MODIFIER, "pactl set-sink-mute @DEFAULT_SINK@ toggle", -1 },  // mod+f10 to mute
 
   // Quit moody
-  { XK_q, MODIFIER|ShiftMask, "killall moody", -1 },  // mod+shift+q to quit moody
+  { XK_c, MODIFIER | ShiftMask, "killall moody", -1 },  // mod+shift+c to quit moody
 
   // Workspace
   // Switching

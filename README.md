@@ -16,20 +16,22 @@ Moody is a very minimal and simple tiling window manager written in C (by a 13 y
 - [x] Startup commands
 - [x] Configurations
 - [x] Focus on hover
-- [ ] EWMH
+- [ ] Bar
 
 ### Notes
 
 - Bars are not supported (yet)
-- EWMH is not supported (yet)
-- Moody is not meant to be better than other tiling windows manager (just a project built by a 13 year old)
 
 ### Dependencies
+
+- libx11
+- xterm (default terminal)
+- rofi (default app launcher)
 
 1. Arch
 
 ```bash
-sudo pacman -S libx11 libxrandr libxinerama libxcursor libxext libxt xorg-server-devel xterm
+sudo pacman -S libx11 libxrandr libxinerama libxcursor libxext libxt xorg-server-devel xterm rofi
 ```
 
 2. Ubuntu/Debian

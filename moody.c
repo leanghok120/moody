@@ -689,7 +689,7 @@ int main() {
   // EWMH
   init_ewmh_atoms(dpy);
   set_supported_atoms(dpy, root);
-  set_window_title(dpy, root, "moody");
+  set_window_title(dpy, root, WM_NAME);
 
   init_workspace_manager();
   setup_keybindings(dpy, root);

@@ -77,19 +77,7 @@ moody
 
 #### display manager
 
-you can also start moody with your display manager by adding a moody.desktop to /usr/share/xsessions/
-the contents of moody.desktop should look like this:
-
-```bash
-[Desktop Entry]
-Encoding=UTF-8
-Name=moody
-Comment=Cozy tiling window manager
-Exec=moody
-Type=XSession
-```
-
-Now, your display manager should show moody as a session and you can log into it
+After installing doing `sudo make clean build install` you should see moody as a session in your display manager
 
 ### Usage
 

@@ -664,7 +664,7 @@ void handle_events(Display * dpy, Window root, int scr) {
     case MapRequest:
       printf("Map Request\n");
       handle_map_request(ev, dpy);
-      focus_next_window(dpy);
+      raise_window(dpy, ev.xmaprequest.window);
       break;
     case UnmapNotify:
       printf("Unmap Notify\n");

@@ -557,8 +557,17 @@ void end_drag(Display * dpy, DragState * drag) {
 
 // Focus window
 void raise_window(Display * dpy, Window window) {
+  TilingLayout current_workspace = workspace_manager.layouts[workspace_manager.current_workspace];
+
+  // Interate through all windows in the current workspace and set an inactive border color for them
+  for (int i = 0; i < current_workspace.count; i++) {
+    draw_window_border(dpy, current_workspace.windows[i].window, BORDER_WIDTH, INACTIVE_BORDER_COLOR);
+  }
+
+  // Focus window and set active border color for window
   XRaiseWindow(dpy, window);
   XSetInputFocus(dpy, window, RevertToPointerRoot, CurrentTime);
+  draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
   printf("Window 0x%lx raised and focused\n", window);
 }
 
@@ -655,7 +664,7 @@ void handle_events(Display * dpy, Window root, int scr) {
     case MapRequest:
       printf("Map Request\n");
       handle_map_request(ev, dpy);
-      raise_window(dpy, ev.xmaprequest.window);
+      focus_next_window(dpy);
       break;
     case UnmapNotify:
       printf("Unmap Notify\n");
@@ -671,6 +680,7 @@ void handle_events(Display * dpy, Window root, int scr) {
     case EnterNotify:
       if (ev.xcrossing.window != root) {
         printf("Mouse entered window 0x%lx, raising and focusing it\n", ev.xcrossing.window);
+
         raise_window(dpy, ev.xcrossing.window);
       }
       break;

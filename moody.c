@@ -262,7 +262,7 @@ void arrange_window(Display * dpy, int screen_width, int screen_height) {
     }
   } else {
     // More than one window, apply tiling layout
-    int master_width = (usable_width / 2) - (INNER_GAP / 2);
+    int master_width = (usable_width / 2) * 1.2 - (INNER_GAP / 2);
     int stack_width = (usable_width - master_width) - INNER_GAP;
 
     // Avoid division by zero

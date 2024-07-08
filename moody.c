@@ -619,12 +619,17 @@ void handle_client_message(XEvent * e, Display * dpy) {
 
     if (state == net_wm_state_fullscreen) {
       if (add) {
-        // Make window fullscreen
+        XWindowChanges changes;
+
+        changes.border_width = 0;
+
+        // Make window fullscreen and remove border
         XMoveResizeWindow(dpy, window, 0, 0,
                           XDisplayWidth(dpy, DefaultScreen(dpy)), XDisplayHeight(dpy, DefaultScreen(dpy)));
+        XConfigureWindow(dpy, window, CWBorderWidth, &changes);
       } else {
         // Exit fullscreen
-        // Implementation depends on your window manager logic
+        draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
       }
     }
   }

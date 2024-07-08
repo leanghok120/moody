@@ -1,6 +1,6 @@
 # MoodyWM
 
-![moody screenshot](./screenshots/no-bar.png)
+![moody screenshot](./screenshots/moody-nobar-borders.png)
 
 ## Overview
 

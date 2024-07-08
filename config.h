@@ -22,7 +22,8 @@
 #define DEFAULT_WINDOW_HEIGHT 800
 #define MAX_WINDOWS 500 // Set max windows per workspace
 #define BORDER_WIDTH 4
-#define BORDER_COLOR "#ffffff" // Set border color to white
+#define BORDER_COLOR "#ffffff" // Set active border color to white
+#define INACTIVE_BORDER_COLOR "#000000" // Set inactive border color to black
 
 // Gaps
 #define INNER_GAP 20 // Gap between windows

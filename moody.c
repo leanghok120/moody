@@ -102,8 +102,13 @@ void focus_next_window(Display * dpy) {
 
   Window next_window = current_layout -> windows[index].window;
   if (next_window) {
+    // Set border color for inactive window
+    draw_window_border(dpy, focused_window, BORDER_WIDTH, INACTIVE_BORDER_COLOR);
     XRaiseWindow(dpy, next_window);
     XSetInputFocus(dpy, next_window, RevertToPointerRoot, CurrentTime);
+    
+    // Set border color for active window
+    draw_window_border(dpy, next_window, BORDER_WIDTH, BORDER_COLOR);
   }
 }
 
@@ -133,8 +138,10 @@ void focus_prev_window(Display * dpy) {
 
   Window prev_window = current_layout -> windows[index].window;
   if (prev_window) {
+    draw_window_border(dpy, focused_window, BORDER_WIDTH, INACTIVE_BORDER_COLOR);
     XRaiseWindow(dpy, prev_window);
     XSetInputFocus(dpy, prev_window, RevertToPointerRoot, CurrentTime);
+    draw_window_border(dpy, prev_window, BORDER_WIDTH, BORDER_COLOR);
   }
 }
 

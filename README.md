@@ -4,7 +4,7 @@
 
 ## Overview
 
-Moody is a very minimal and simple tiling window manager written in C. Moody's goal is to be minimal like yet usable.
+Moody is a very minimal and simple tiling window manager written in C. Moody's goal is to be minimal yet usable.
 
 ### Features
 

@@ -4,7 +4,7 @@
 
 ## Overview
 
-Moody is a very minimal and simple tiling window manager written in C (by a 13 year old). Moody has only ~700 lines of code. Moody's goal is to be minimal yet usable.
+Moody is a very minimal and simple tiling window manager written in C. Moody's goal is to be minimal like yet usable.
 
 ### Features
 
@@ -23,6 +23,7 @@ Moody is a very minimal and simple tiling window manager written in C (by a 13 y
 ### Notes
 
 - Bars are not supported (yet)
+- Coded by a 13 year old
 
 ### Dependencies
 
@@ -53,7 +54,7 @@ sudo dnf install -y libX11-devel libXrandr-devel libXinerama-devel libXcursor-de
 #### 1. Clone this repo
 
 ```bash
-git clone git@github.com:leanghok120/moody.git
+git clone https://github.com/leanghok120/moody.git
 cd moody
 rm -rf .git
 ```
@@ -145,4 +146,4 @@ Moody keybindings are keybindings that interact with moody, such as killing wind
 ### Inspiration
 
 I got this idea of creating my own tiling windows manager in a dream. After I woke up, I decided to create moody since I had no projects to work on.
-moody is inspired by dwm's minimalism and i3's simplicity
+moody is inspired by dwm and ragnarwm

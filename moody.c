@@ -10,42 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include "config.h"
+#include "structs.h"
 
 #define MAX(a, b)((a) > (b) ? (a) : (b))
 
-typedef struct {
-  Window window;
-  int start_x, start_y;
-  int x, y;
-  int width, height;
-  int is_resizing;
-}
-DragState;
-
-typedef struct {
-  Window window;
-  int x, y;
-  int width, height;
-  int border_width;
-  int is_floating;
-}
-WindowInfo;
-
-typedef struct {
-  WindowInfo windows[MAX_WINDOWS];
-  int count;
-  Window master; // Store the master window
-}
-TilingLayout;
-
 TilingLayout layout;
-
-typedef struct {
-  TilingLayout layouts[MAX_WORKSPACES];
-  int current_workspace;
-}
-WorkspaceManager;
-
 WorkspaceManager workspace_manager;
 
 // EWMH properties

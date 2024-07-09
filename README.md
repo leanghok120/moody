@@ -77,7 +77,7 @@ moody
 
 #### display manager
 
-After installing doing `sudo make clean build install` you should see moody as a session in your display manager
+After doing `sudo make clean build install` you should see moody as a session in your display manager
 
 ### Usage
 

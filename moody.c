@@ -46,7 +46,7 @@ void draw_window_border(Display * dpy, Window window, int border_width,
 }
 
 void focus_next_window(Display * dpy) {
-  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace];
+  TilingLayout * current_layout = & workspace_manager.layouts[workspace_manager.current_workspace]; // get the current workspace layout struct
   if (current_layout -> count == 0) return; // No windows
 
   Window focused_window;
@@ -54,7 +54,7 @@ void focus_next_window(Display * dpy) {
   XGetInputFocus(dpy, & focused_window, & revert_to);
 
   int index = -1;
-  for (int i = 0; i < current_layout -> count; i++) { // Corrected loop condition
+  for (int i = 0; i < current_layout -> count; i++) { // loop through all windows in current workspace
     if (current_layout -> windows[i].window == focused_window) {
       index = i;
       break;
@@ -276,7 +276,6 @@ void apply_layout(Display * dpy) {
         current_layout -> windows[i].y,
         current_layout -> windows[i].width,
         current_layout -> windows[i].height);
-
     }
   }
 }
@@ -284,7 +283,7 @@ void apply_layout(Display * dpy) {
 // Workspace functions
 void init_workspace_manager() {
   workspace_manager.current_workspace = 1;
-  for (int i = 1; i < MAX_WORKSPACES; i++) {
+  for (int i = 0; i < MAX_WORKSPACES; i++) {
     workspace_manager.layouts[i].count = 0;
     workspace_manager.layouts[i].master = None;
   }
@@ -374,6 +373,7 @@ void remove_window_from_current_workspace(Display * dpy, Window window) {
 }
 
 void setup_keybindings(Display * dpy, Window root) {
+  // Grab key
   for (int i = 0; i < NUM_KEYBINDINGS; i++) {
     KeyCode keycode = XKeysymToKeycode(dpy, keybindings[i].keysym);
     XGrabKey(dpy, keycode, keybindings[i].modifier, root, True, GrabModeAsync, GrabModeAsync);
@@ -401,7 +401,7 @@ void set_default_cursor(Display * dpy, Window root) {
   XFlush(dpy);
 }
 
-// Map window and Move window to 50, 50
+// Map window
 void handle_map_request(XEvent ev, Display * dpy) {
   XWindowAttributes attr;
   XGetWindowAttributes(dpy, ev.xmaprequest.window, & attr);
@@ -414,14 +414,12 @@ void handle_map_request(XEvent ev, Display * dpy) {
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
   XSelectInput(dpy, ev.xmaprequest.window, EnterWindowMask | FocusChangeMask | StructureNotifyMask);
   XMapWindow(dpy, ev.xmaprequest.window);
-  add_window_to_layout(dpy, ev.xmaprequest.window, & workspace_manager.layouts[workspace_manager.current_workspace]);
   add_window_to_current_workspace(dpy, ev.xmaprequest.window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
 }
 
 void handle_unmap_request(XEvent ev, Display * dpy) {
-  remove_window_from_layout(ev.xunmap.window, & workspace_manager.layouts[workspace_manager.current_workspace], dpy);
   remove_window_from_current_workspace(dpy, ev.xunmap.window);
 
   focus_next_window(dpy);

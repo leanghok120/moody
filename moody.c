@@ -102,7 +102,7 @@ void draw_window_border(Display * dpy, Window window, int border_width,
 }
 
 // Focus window
-void raise_window(Display * dpy, Window window) {
+void focus_window(Display * dpy, Window window) {
   TilingLayout current_workspace = workspace_manager.layouts[workspace_manager.current_workspace];
 
   // Interate through all windows in the current workspace and set an inactive border color for them
@@ -146,10 +146,8 @@ void focus_next_window(Display * dpy) {
   if (next_window) {
     // Set border color for inactive window
     draw_window_border(dpy, focused_window, BORDER_WIDTH, INACTIVE_BORDER_COLOR);
-    raise_window(dpy, next_window);
-    
-    // Set border color for active window
-    draw_window_border(dpy, next_window, BORDER_WIDTH, BORDER_COLOR);
+    // Focus the next window and set active border
+    focus_window(dpy, next_window);
   }
 }
 
@@ -180,8 +178,8 @@ void focus_prev_window(Display * dpy) {
   Window prev_window = current_layout -> windows[index].window;
   if (prev_window) {
     draw_window_border(dpy, focused_window, BORDER_WIDTH, INACTIVE_BORDER_COLOR);
-    raise_window(dpy, prev_window);
-    draw_window_border(dpy, prev_window, BORDER_WIDTH, BORDER_COLOR);
+    // Focus the previous window and set active border
+    focus_window(dpy, prev_window);
   }
 }
 
@@ -689,7 +687,7 @@ void handle_events(Display * dpy, Window root, int scr) {
     case MapRequest:
       printf("Map Request\n");
       handle_map_request(ev, dpy);
-      raise_window(dpy, ev.xmaprequest.window);
+      focus_window(dpy, ev.xmaprequest.window);
       break;
     case UnmapNotify:
       printf("Unmap Notify\n");
@@ -706,7 +704,7 @@ void handle_events(Display * dpy, Window root, int scr) {
       if (ev.xcrossing.window != root) {
         printf("Mouse entered window 0x%lx, raising and focusing it\n", ev.xcrossing.window);
 
-        raise_window(dpy, ev.xcrossing.window);
+        focus_window(dpy, ev.xcrossing.window);
       }
       break;
     case ButtonPress:

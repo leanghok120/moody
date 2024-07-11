@@ -58,15 +58,15 @@ static Keybinding keybindings[] = {
 
   // Workspace
   // Switching
-  { XK_1, MODIFIER, NULL, 1 },                     // mod+1 to switch to workspace 1
-  { XK_2, MODIFIER, NULL, 2 },                     // mod+2 to switch to workspace 2
-  { XK_3, MODIFIER, NULL, 3 },                     // mod+3 to switch to workspace 3
-  { XK_4, MODIFIER, NULL, 4 },                     // mod+4 to switch to workspace 4
-  { XK_5, MODIFIER, NULL, 5 },                     // mod+5 to switch to workspace 5
-  { XK_6, MODIFIER, NULL, 6 },                     // mod+6 to switch to workspace 6
-  { XK_7, MODIFIER, NULL, 7 },                     // mod+7 to switch to workspace 7
-  { XK_8, MODIFIER, NULL, 8 },                     // mod+8 to switch to workspace 8
-  { XK_9, MODIFIER, NULL, 9 },                     // mod+9 to switch to workspace 9
+  { XK_1, MODIFIER, NULL, 0 },                     // mod+1 to switch to workspace 1
+  { XK_2, MODIFIER, NULL, 1 },                     // mod+2 to switch to workspace 2
+  { XK_3, MODIFIER, NULL, 2 },                     // mod+3 to switch to workspace 3
+  { XK_4, MODIFIER, NULL, 3 },                     // mod+4 to switch to workspace 4
+  { XK_5, MODIFIER, NULL, 4 },                     // mod+5 to switch to workspace 5
+  { XK_6, MODIFIER, NULL, 5 },                     // mod+6 to switch to workspace 6
+  { XK_7, MODIFIER, NULL, 6 },                     // mod+7 to switch to workspace 7
+  { XK_8, MODIFIER, NULL, 7 },                     // mod+8 to switch to workspace 8
+  { XK_9, MODIFIER, NULL, 8 },                     // mod+9 to switch to workspace 9
 
   // Moving window to
   { XK_1, MODIFIER | ShiftMask, "move_to_workspace(dpy, 1)", -1 },      // mod+shift+1 to move window to workspace 1

@@ -428,7 +428,7 @@ void move_window_to_workspace(Display * dpy, int target_workspace) {
 }
 
 void switch_workspace(Display * dpy, int workspace_index) {
-  if (workspace_index < 1 || workspace_index > MAX_WORKSPACES) return;
+  if (workspace_index > MAX_WORKSPACES) return;
 
   if (workspace_manager.current_workspace == workspace_index) {
     printf("Already on workspace %d\n", workspace_index);

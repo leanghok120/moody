@@ -422,6 +422,8 @@ void move_window_to_workspace(Display * dpy, int target_workspace) {
   ev.xunmap.window = focused_window;
   XSendEvent(dpy, focused_window, False, StructureNotifyMask, & ev);
 
+  update_client_list(dpy, RootWindow(dpy, DefaultScreen(dpy)), target_layout->windows, target_layout->count);
+
   printf("Moved window 0x%lx to workspace %d\n", focused_window, target_workspace);
 }
 
@@ -453,6 +455,8 @@ void switch_workspace(Display * dpy, int workspace_index) {
     XRaiseWindow(dpy, new_layout -> windows[i].window);
   }
 
+  // Update ewmh properties
+  set_current_desktop(dpy, RootWindow(dpy, DefaultScreen(dpy)), workspace_index);
   update_client_list(dpy, RootWindow(dpy, DefaultScreen(dpy)), new_layout -> windows, new_layout -> count);
 
   // Reapply layout for the new workspace
@@ -468,6 +472,7 @@ void add_window_to_current_workspace(Display * dpy, Window window) {
   XMapWindow(dpy, window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
+  update_client_list(dpy, RootWindow(dpy, DefaultScreen(dpy)), current_layout -> windows, current_layout -> count);
 }
 
 void remove_window_from_current_workspace(Display * dpy, Window window) {
@@ -476,6 +481,7 @@ void remove_window_from_current_workspace(Display * dpy, Window window) {
   XUnmapWindow(dpy, window);
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
+  update_client_list(dpy, RootWindow(dpy, DefaultScreen(dpy)), current_layout -> windows, current_layout -> count);
 }
 
 void setup_keybindings(Display * dpy, Window root) {

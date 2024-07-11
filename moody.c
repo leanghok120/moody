@@ -107,6 +107,9 @@ void init_ewmh(Display * dpy, Window root) {
   init_ewmh_atoms(dpy);
   set_supported_atoms(dpy, root);
   set_window_title(dpy, root, WM_NAME);
+  set_supporting_wm_check(dpy, root);
+  set_number_of_desktops(dpy, root, MAX_WORKSPACES);
+  set_current_desktop(dpy, root, 1);
 }
 
 // Window decorations

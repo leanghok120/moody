@@ -18,13 +18,14 @@ TilingLayout layout;
 WorkspaceManager workspace_manager;
 
 // EWMH properties
-Atom net_supported, net_wm_name, net_wm_state, net_wm_state_fullscreen, net_wm_desktop,
+Atom net_supported, net_wm_name, net_supporting_wm_check, net_wm_state, net_wm_state_fullscreen, net_wm_desktop,
 net_client_list, net_current_desktop, net_number_of_desktops, net_active_window;
 
 // EWMH
 void init_ewmh_atoms(Display * dpy) {
   net_supported = XInternAtom(dpy, "_NET_SUPPORTED", False);
   net_wm_name = XInternAtom(dpy, "_NET_WM_NAME", False);
+  net_supporting_wm_check = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
   net_wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
   net_wm_state_fullscreen = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
   net_wm_desktop = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
@@ -38,6 +39,7 @@ void set_supported_atoms(Display * dpy, Window root) {
   Atom supported_atoms[] = {
     net_supported,
     net_wm_name,
+    net_supporting_wm_check,
     net_wm_state,
     net_wm_state_fullscreen,
     net_wm_desktop,
@@ -57,6 +59,14 @@ void set_window_title(Display * dpy, Window win,
     (unsigned char * ) title, strlen(title));
 }
 
+void set_supporting_wm_check(Display * dpy, Window root) {
+  Window wm_check_win = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 0, 0, 0);
+  XChangeProperty(dpy, root, net_supporting_wm_check, XA_WINDOW, 32, PropModeReplace, (unsigned char * ) & wm_check_win, 1);
+  XChangeProperty(dpy, wm_check_win, net_supporting_wm_check, XA_WINDOW, 32, PropModeReplace, (unsigned char * ) & wm_check_win, 1);
+  XChangeProperty(dpy, wm_check_win, net_wm_name, XA_STRING, 8, PropModeReplace, (unsigned char * ) WM_NAME, 16);
+  XMapWindow(dpy, wm_check_win);
+}
+
 void set_window_state(Window window, Atom state, Bool add, Display * dpy) {
   XEvent e;
   memset( & e, 0, sizeof(e));
@@ -69,12 +79,34 @@ void set_window_state(Window window, Atom state, Bool add, Display * dpy) {
   XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureNotifyMask | SubstructureRedirectMask, & e);
 }
 
-void set_active_window(Window window, Display * dpy) {
-  XChangeProperty(dpy, DefaultRootWindow(dpy), net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char * ) & window, 1);
+void set_active_window(Display * dpy, Window root, Window active_window) {
+  XChangeProperty(dpy, root, net_active_window, XA_WINDOW, 32, PropModeReplace, (unsigned char * ) & active_window, 1);
 }
 
-void update_client_list(Window * windows, int count, Display * dpy) {
-  XChangeProperty(dpy, DefaultRootWindow(dpy), net_client_list, XA_WINDOW, 32, PropModeReplace, (unsigned char * ) windows, count);
+void update_client_list(Display * dpy, Window root, WindowInfo * windows, int count) {
+  Window client_list[count];
+  for (int i = 0; i < count; ++i) {
+    client_list[i] = windows[i].window;
+  }
+  XChangeProperty(dpy, root, net_client_list, XA_WINDOW, 32, PropModeReplace, (unsigned char * ) client_list, count);
+}
+
+void set_window_desktop(Display * dpy, Window win, int desktop) {
+  XChangeProperty(dpy, win, net_wm_desktop, XA_CARDINAL, 32, PropModeReplace, (unsigned char * ) & desktop, 1);
+}
+
+void set_current_desktop(Display * dpy, Window root, int desktop) {
+  XChangeProperty(dpy, root, net_current_desktop, XA_CARDINAL, 32, PropModeReplace, (unsigned char * ) & desktop, 1);
+}
+
+void set_number_of_desktops(Display * dpy, Window root, int num_desktops) {
+  XChangeProperty(dpy, root, net_number_of_desktops, XA_CARDINAL, 32, PropModeReplace, (unsigned char * ) & num_desktops, 1);
+}
+
+void init_ewmh(Display * dpy, Window root) {
+  init_ewmh_atoms(dpy);
+  set_supported_atoms(dpy, root);
+  set_window_title(dpy, root, WM_NAME);
 }
 
 // Window decorations
@@ -113,7 +145,7 @@ void focus_window(Display * dpy, Window window) {
   // Focus window and set active border color for window
   XRaiseWindow(dpy, window);
   XSetInputFocus(dpy, window, RevertToPointerRoot, CurrentTime);
-  set_active_window(window, dpy);
+  set_active_window(dpy, RootWindow(dpy, DefaultScreen(dpy)), window);
   draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
   printf("Window 0x%lx raised and focused\n", window);
 }
@@ -418,6 +450,8 @@ void switch_workspace(Display * dpy, int workspace_index) {
     XRaiseWindow(dpy, new_layout -> windows[i].window);
   }
 
+  update_client_list(dpy, RootWindow(dpy, DefaultScreen(dpy)), new_layout -> windows, new_layout -> count);
+
   // Reapply layout for the new workspace
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
@@ -482,22 +516,15 @@ void handle_map_request(XEvent ev, Display * dpy) {
 
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
   XSelectInput(dpy, ev.xmaprequest.window, EnterWindowMask | FocusChangeMask | StructureNotifyMask);
-  XMapWindow(dpy, ev.xmaprequest.window);
-  update_client_list(&ev.xmaprequest.window, layout.count, dpy);
+  // Maps window and tiles it
   add_window_to_current_workspace(dpy, ev.xmaprequest.window);
-  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
-  apply_layout(dpy);
 }
 
 void handle_unmap_request(XEvent ev, Display * dpy) {
-  XUnmapWindow(dpy, ev.xunmap.window);
-  update_client_list(&ev.xunmap.window, layout.count, dpy);
+  // Unmaps window and tiles everything else
   remove_window_from_current_workspace(dpy, ev.xunmap.window);
 
   focus_next_window(dpy);
-
-  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)), DisplayHeight(dpy, DefaultScreen(dpy)));
-  apply_layout(dpy);
 }
 
 void handle_configure_request(XEvent ev, Display * dpy) {
@@ -664,8 +691,8 @@ void handle_client_message(XEvent * e, Display * dpy) {
 
         // Make window fullscreen and remove border
         XMoveResizeWindow(dpy, window, 0, 0,
-                          XDisplayWidth(dpy, DefaultScreen(dpy)), XDisplayHeight(dpy, DefaultScreen(dpy)));
-        XConfigureWindow(dpy, window, CWBorderWidth, &changes);
+          XDisplayWidth(dpy, DefaultScreen(dpy)), XDisplayHeight(dpy, DefaultScreen(dpy)));
+        XConfigureWindow(dpy, window, CWBorderWidth, & changes);
       } else {
         // Exit fullscreen
         draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
@@ -726,7 +753,7 @@ void handle_events(Display * dpy, Window root, int scr) {
       handle_keypress_event(ev, dpy);
       break;
     case ClientMessage:
-      handle_client_message(&ev, dpy);
+      handle_client_message( & ev, dpy);
       break;
     default:
       printf("Other event type: %d\n", ev.type);
@@ -776,9 +803,7 @@ int main() {
   init_layout();
 
   // EWMH
-  init_ewmh_atoms(dpy);
-  set_supported_atoms(dpy, root);
-  set_window_title(dpy, root, WM_NAME);
+  init_ewmh(dpy, root);
 
   init_workspace_manager();
   setup_keybindings(dpy, root);

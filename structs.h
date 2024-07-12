@@ -26,9 +26,14 @@ typedef struct {
 }
 TilingLayout;
 
-
 typedef struct {
   TilingLayout layouts[MAX_WORKSPACES];
   int current_workspace;
 }
 WorkspaceManager;
+
+typedef struct {
+  int x, y;
+  unsigned int width, height;
+}
+DockGeometry;

@@ -18,11 +18,11 @@ Moody is a very minimal and simple tiling window manager written in C. Moody's g
 - [x] Startup commands
 - [x] Configurations
 - [x] Focus on hover
-- [ ] Bar
+- [x] Bar
 
 ### Notes
 
-- Bars are not supported (yet)
+- Codebase is very messy
 - Coded by a 13 year old
 
 ### Dependencies

@@ -1,6 +1,6 @@
 # MoodyWM
 
-![moody screenshot](./screenshots/moody-nobar-borders.png)
+![moody screenshot](./screenshots/moody-bar.png)
 
 ## Overview
 
@@ -18,7 +18,7 @@ Moody is a very minimal and simple tiling window manager written in C. Moody's g
 - [x] Startup commands
 - [x] Configurations
 - [x] Focus on hover
-- [x] Bar
+- [x] Supports Bar (polybar)
 
 ### Notes
 

@@ -51,7 +51,7 @@ sudo dnf install -y libX11-devel libXrandr-devel libXinerama-devel libXcursor-de
 
 ### Installation
 
-#### 1. Clone this repo
+clone the repo and build moody from source
 
 ```bash
 git clone https://github.com/leanghok120/moody.git
@@ -59,30 +59,15 @@ cd moody
 rm -rf .git
 ```
 
-#### 2. Install moody
-
 make sure you're in the moody directory and run:
 
 ```bash
 sudo make clean build install
 ```
 
-#### 3. Start moody
-
-#### startx
-
-add this into your .xinitrc (no need to include startup commands)
-```bash
-moody
-```
-
-#### display manager
-
-After doing `sudo make clean build install` you should see moody as a session in your display manager
-
 ### Usage
 
-Moody is configured in pure C, although this may sound scary, the config file is super simple to understand. After configuring everything u need, just compile everything with `sudo make build install` and restart moody.
+Moody is configured in pure C, although this may sound scary, the `config.h` file is super simple to understand. After configuring everything u need, just compile everything with `sudo make build install` and restart moody.
 
 ### Configuration
 

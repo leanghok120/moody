@@ -118,7 +118,7 @@ void init_ewmh(Display *dpy, Window root) {
   set_window_title(dpy, root, WM_NAME);
   set_supporting_wm_check(dpy, root);
   set_number_of_desktops(dpy, root, MAX_WORKSPACES);
-  set_current_desktop(dpy, root, 1);
+  set_current_desktop(dpy, root, 0);
 }
 
 // Status bar
@@ -458,7 +458,7 @@ void apply_layout(Display *dpy) {
 
 // Workspace functions
 void init_workspace_manager() {
-  workspace_manager.current_workspace = 1;
+  workspace_manager.current_workspace = 0;
   for (int i = 0; i < MAX_WORKSPACES; i++) {
     workspace_manager.layouts[i].count = 0;
     workspace_manager.layouts[i].master = None;
@@ -466,12 +466,18 @@ void init_workspace_manager() {
 }
 
 void move_window_to_workspace(Display *dpy, int target_workspace) {
-  if (target_workspace < 1 || target_workspace > MAX_WORKSPACES) return;
+  if (target_workspace > MAX_WORKSPACES) return;
+
 
   TilingLayout *current_layout =
       &workspace_manager.layouts[workspace_manager.current_workspace];
   Window focused_window;
   int revert_to;
+
+  // Current workspace
+  if (target_workspace == workspace_manager.current_workspace) {
+    return;
+  }
 
   // Get the currently focused window
   XGetInputFocus(dpy, &focused_window, &revert_to);

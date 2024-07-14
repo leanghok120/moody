@@ -468,7 +468,6 @@ void init_workspace_manager() {
 void move_window_to_workspace(Display *dpy, int target_workspace) {
   if (target_workspace > MAX_WORKSPACES) return;
 
-
   TilingLayout *current_layout =
       &workspace_manager.layouts[workspace_manager.current_workspace];
   Window focused_window;
@@ -725,6 +724,18 @@ void end_drag(Display *dpy, DragState *drag) {
   }
 }
 
+void close_window(Display *dpy, Window window) {
+  Atom wm_delete_window = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+  XEvent event;
+  event.type = ClientMessage;
+  event.xclient.window = window;
+  event.xclient.message_type = XInternAtom(dpy, "WM_PROTOCOLS", True);
+  event.xclient.format = 32;
+  event.xclient.data.l[0] = wm_delete_window;
+  event.xclient.data.l[1] = CurrentTime;
+  XSendEvent(dpy, window, False, NoEventMask, &event);
+}
+
 void kill_focused_window(Display *dpy) {
   Window focused_window;
   int revert_to;
@@ -733,7 +744,7 @@ void kill_focused_window(Display *dpy) {
   XGetInputFocus(dpy, &focused_window, &revert_to);
 
   if (focused_window != None && focused_window != PointerRoot) {
-    XDestroyWindow(dpy, focused_window);
+    close_window(dpy, focused_window);
     printf("Killed window 0x%lx\n", focused_window);
   } else {
     printf("No window is focused\n");

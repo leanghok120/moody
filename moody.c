@@ -504,6 +504,11 @@ void move_window_to_workspace(Display *dpy, int target_workspace) {
     }
   }
 
+  update_client_list(
+      dpy, DefaultRootWindow(dpy),
+      workspace_manager.layouts[workspace_manager.current_workspace].windows,
+      workspace_manager.layouts[workspace_manager.current_workspace].count);
+
   arrange_windows(dpy);
 }
 
@@ -520,6 +525,10 @@ void switch_workspace(Display *dpy, int new_workspace) {
 
   // Switch to new workspace
   workspace_manager.current_workspace = new_workspace;
+  update_client_list(
+      dpy, DefaultRootWindow(dpy),
+      workspace_manager.layouts[workspace_manager.current_workspace].windows,
+      workspace_manager.layouts[workspace_manager.current_workspace].count);
 
   // Show windows in new workspace
   TilingLayout *new_layout =
@@ -590,11 +599,19 @@ void handle_map_request(XEvent ev, Display *dpy) {
                EnterWindowMask | FocusChangeMask | StructureNotifyMask);
   // Maps window and tiles it
   add_window_to_current_workspace(dpy, ev.xmaprequest.window);
+  update_client_list(
+      dpy, DefaultRootWindow(dpy),
+      workspace_manager.layouts[workspace_manager.current_workspace].windows,
+      workspace_manager.layouts[workspace_manager.current_workspace].count);
 }
 
 void handle_unmap_request(XEvent ev, Display *dpy) {
   // Unmaps window and tiles everything else
   remove_window_from_current_workspace(dpy, ev.xunmap.window);
+  update_client_list(
+      dpy, DefaultRootWindow(dpy),
+      workspace_manager.layouts[workspace_manager.current_workspace].windows,
+      workspace_manager.layouts[workspace_manager.current_workspace].count);
 
   focus_next_window(dpy);
 }
@@ -922,6 +939,11 @@ int main() {
   system("/usr/bin/autostart.sh &");
 
   init_layouts();
+
+  update_client_list(
+      dpy, DefaultRootWindow(dpy),
+      workspace_manager.layouts[workspace_manager.current_workspace].windows,
+      workspace_manager.layouts[workspace_manager.current_workspace].count);
 
   // EWMH
   init_ewmh(dpy, root);

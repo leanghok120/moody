@@ -26,8 +26,8 @@
 #define INACTIVE_BORDER_COLOR "#333333" // Set inactive border color to grey
 
 // Gaps
-#define INNER_GAPS 20 // Gap between windows
-#define OUTER_GAPS 30 // Gap between windows and screen edge
+#define INNER_GAP 20 // Gap between windows
+#define OUTER_GAP 30 // Gap between windows and screen edge
 
 // Keybindings
 
@@ -43,7 +43,6 @@ typedef struct {
 #define KILL_KEY XK_q // mod+q for killing the current window
 #define NEXT_WINDOW_KEY XK_k // mod+k to focus next window
 #define PREV_WINDOW_KEY XK_j // mod+j to focus previous window
-#define SWAP_MASTER_KEY XK_w // mod+w to swap master windows
 
 static Keybinding keybindings[] = {
   { XK_Return, MODIFIER, "xterm", -1 },           // mod+return to open xterm (terminal)

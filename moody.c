@@ -156,25 +156,10 @@ void update_dock_geometry(Display *dpy, Window win) {
   XWindowAttributes attrs;
   XGetWindowAttributes(dpy, win, &attrs);
 
-  // Assuming the dock is always at the top or bottom of the screen
-  if (attrs.y == 0) {
-    // Dock is at the top
-    dock_geometry.x = attrs.x;
-    dock_geometry.y = attrs.y;
-    dock_geometry.width = attrs.width;
-    dock_geometry.height = attrs.height;
-  } else {
-    // Dock is at the bottom
-    int screen_height = DisplayHeight(dpy, DefaultScreen(dpy));
-    dock_geometry.x = attrs.x;
-    dock_geometry.y = screen_height - attrs.height;
-    dock_geometry.width = attrs.width;
-    dock_geometry.height = attrs.height;
-  }
-
-  printf("Updated dock geometry: x=%d, y=%d, width=%d, height=%d\n",
-         dock_geometry.x, dock_geometry.y, dock_geometry.width,
-         dock_geometry.height);
+  dock_geometry.x = attrs.x;
+  dock_geometry.y = attrs.y;
+  dock_geometry.width = attrs.width;
+  dock_geometry.height = attrs.height;
 }
 
 // Window decorations
@@ -299,70 +284,9 @@ void focus_prev_window(Display *dpy) {
 }
 
 // Tiling functions
-void init_layouts() {
-  for (int i = 0; i < MAX_WORKSPACES; i++) {
-    workspace_manager.layouts[i].count = 0;
-    workspace_manager.layouts[i].master = None;
-  }
-  workspace_manager.current_workspace = 0;
-}
-
-void arrange_windows(Display *dpy) {
-  TilingLayout *layout =
-      &workspace_manager.layouts[workspace_manager.current_workspace];
-  int screen = DefaultScreen(dpy);
-  int screen_width = DisplayWidth(dpy, screen);
-  int screen_height = DisplayHeight(dpy, screen);
-
-  // Adjust screen dimensions for dock and outer gaps
-  int adjusted_screen_width = screen_width - (2 * OUTER_GAPS);
-  int adjusted_screen_height =
-      screen_height - (2 * OUTER_GAPS) - dock_geometry.height;
-
-  if (layout->count == 0) return;
-
-  // Special case: If there's only one window, make it fullscreen (with outer
-  // gaps and respecting dock)
-  if (layout->count == 1) {
-    WindowInfo *win = &layout->windows[0];
-    if (!win->is_floating) {
-      win->x = OUTER_GAPS;
-      win->y = OUTER_GAPS + (dock_geometry.y == 0 ? dock_geometry.height : 0);
-      win->width = adjusted_screen_width - 2 * win->border_width;
-      win->height = adjusted_screen_height - 2 * win->border_width;
-      XMoveResizeWindow(dpy, win->window, win->x, win->y, win->width,
-                        win->height);
-    }
-    return;
-  }
-
-  // Tiling logic for multiple windows, now with gaps and respecting dock
-  float master_size = 0.6;  // 60% of the screen width for master window
-  int master_width = (adjusted_screen_width * master_size) - INNER_GAPS / 2;
-  int stack_width = adjusted_screen_width - master_width - INNER_GAPS / 2;
-
-  for (int i = 0; i < layout->count; i++) {
-    WindowInfo *win = &layout->windows[i];
-    if (win->is_floating || is_dock_window(dpy, win->window)) continue;
-
-    if (win->window == layout->master) {
-      win->x = OUTER_GAPS;
-      win->y = OUTER_GAPS + (dock_geometry.y == 0 ? dock_geometry.height : 0);
-      win->width = master_width - 2 * win->border_width;
-      win->height = adjusted_screen_height - 2 * win->border_width;
-    } else {
-      int stack_height = (adjusted_screen_height / (layout->count - 1)) -
-                         INNER_GAPS - 2 * win->border_width;
-      win->x = OUTER_GAPS + master_width + INNER_GAPS;
-      win->y = OUTER_GAPS + (dock_geometry.y == 0 ? dock_geometry.height : 0) +
-               (i - 1) * (stack_height + INNER_GAPS + 2 * win->border_width);
-      win->width = stack_width - 2 * win->border_width;
-      win->height = stack_height;
-    }
-
-    XMoveResizeWindow(dpy, win->window, win->x, win->y, win->width,
-                      win->height);
-  }
+void init_layout() {
+  layout.count = 0;
+  layout.master = None;
 }
 
 bool is_floating_window(Display *dpy, Window win) {
@@ -395,152 +319,260 @@ bool is_floating_window(Display *dpy, Window win) {
   return result;
 }
 
-void add_window_to_current_workspace(Display *dpy, Window window) {
-  if (is_dock_window(dpy, window)) {
-    XMapWindow(dpy, window);
+void add_window_to_layout(Display *dpy, Window window, TilingLayout *layout) {
+  if (layout->count >= MAX_WINDOWS) {
+    fprintf(stderr, "Window limit exceeded\n");
     return;
   }
 
-  TilingLayout *layout =
-      &workspace_manager.layouts[workspace_manager.current_workspace];
-  if (layout->count >= MAX_WINDOWS) return;
+  // Check if window already exists in layout
+  for (int i = 0; i < layout->count; i++) {
+    if (layout->windows[i].window == window) {
+      return;  // Window already exists in layout
+    }
+  }
 
-  WindowInfo new_window = {.window = window,
-                           .x = 0,
-                           .y = 0,
-                           .width = 100,
-                           .height = 100,
-                           .border_width = BORDER_WIDTH,
-                           .is_floating = 0};
+  bool is_floating = is_floating_window(dpy, window);
 
-  layout->windows[layout->count] = new_window;
+  // Add window to layout
+  layout->windows[layout->count].window = window;
+  layout->windows[layout->count].border_width = BORDER_WIDTH;
+  layout->windows[layout->count].is_floating = is_floating;
+  if (is_dock_window(dpy, window)) {
+    draw_window_border(dpy, window, 0, BORDER_COLOR);
+    update_dock_geometry(dpy, window);
+
+    return;
+  } else {
+    draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
+  }
   layout->count++;
 
   if (layout->master == None) {
     layout->master = window;
   }
 
-  arrange_windows(dpy);
-  XMapWindow(dpy, window);
+  printf("Window 0x%lx added. Total windows: %d\n", window, layout->count);
 }
 
-void remove_window_from_current_workspace(Display *dpy, Window window) {
-  TilingLayout *layout =
-      &workspace_manager.layouts[workspace_manager.current_workspace];
-  int i;
-  for (i = 0; i < layout->count; i++) {
+void remove_window_from_layout(Window window, TilingLayout *layout,
+                               Display *dpy) {
+  int found = 0;
+  for (int i = 0; i < layout->count; i++) {
     if (layout->windows[i].window == window) {
-      break;
+      found = 1;
+    }
+    if (found && i < layout->count - 1) {
+      layout->windows[i] = layout->windows[i + 1];
     }
   }
-  if (i == layout->count) return;  // Window not found
-
-  // Shift remaining windows
-  for (; i < layout->count - 1; i++) {
-    layout->windows[i] = layout->windows[i + 1];
+  if (found) {
+    layout->count--;
+    if (layout->master == window) {
+      layout->master = (layout->count > 0) ? layout->windows[0].window : None;
+    }
+    printf("Window 0x%lx removed. Total windows: %d\n", window, layout->count);
   }
-  layout->count--;
-
-  // Update master if necessary
-  if (layout->master == window) {
-    layout->master = (layout->count > 0) ? layout->windows[0].window : None;
+  if (layout->count > 0) {
+    focus_next_window(dpy);
   }
-
-  arrange_windows(dpy);
 }
 
-void swap_master(Display *dpy) {
-  TilingLayout *layout =
+void arrange_window(Display *dpy, int screen_width, int screen_height) {
+  TilingLayout *current_layout =
       &workspace_manager.layouts[workspace_manager.current_workspace];
-  if (layout->count < 2) return;
+  if (current_layout->count == 0) return;  // No windows to arrange
 
-  Window focused;
-  int revert_to;
-  XGetInputFocus(dpy, &focused, &revert_to);
+  int tiling_count = 0;
 
-  if (focused != layout->master) {
-    for (int i = 0; i < layout->count; i++) {
-      if (layout->windows[i].window == focused) {
-        Window temp = layout->master;
-        layout->master = focused;
-        layout->windows[i].window = temp;
+  // Count only non-floating windows
+  for (int i = 0; i < current_layout->count; i++) {
+    if (!is_floating_window(dpy, current_layout->windows[i].window)) {
+      tiling_count++;
+    }
+  }
+
+  // No windows to tile or only floating windows
+  if (tiling_count == 0) return;
+
+  // Calculate the usable area considering the gaps
+  int usable_width = screen_width - 2 * OUTER_GAP;
+  int usable_height = screen_height - 2 * OUTER_GAP - dock_geometry.height;
+
+  if (tiling_count == 1) {
+    // Only one non-floating window, make it full screen with gaps
+    for (int i = 0; i < current_layout->count; i++) {
+      if (!is_floating_window(dpy, current_layout->windows[i].window)) {
+        current_layout->windows[i].x = OUTER_GAP;
+        current_layout->windows[i].y = OUTER_GAP;
+        current_layout->windows[i].width = usable_width;
+        current_layout->windows[i].height = usable_height;
         break;
       }
     }
-    arrange_windows(dpy);
+  } else {
+    // More than one window, apply tiling layout
+    int master_width = (usable_width / 2) * 1.2 - (INNER_GAP / 2);
+    int stack_width = (usable_width - master_width) - INNER_GAP;
+
+    // Avoid division by zero
+    int stack_height =
+        (usable_height - INNER_GAP * (tiling_count - 2)) / (tiling_count - 1);
+    if (tiling_count == 2) {
+      stack_height = usable_height;  // Special case for two windows
+    }
+
+    int tiling_index = 0;
+    for (int i = 0; i < current_layout->count; i++) {
+      if (!is_floating_window(dpy, current_layout->windows[i].window)) {
+        if (tiling_index == 0) {
+          current_layout->windows[i].x = OUTER_GAP;
+          current_layout->windows[i].y = OUTER_GAP;
+          current_layout->windows[i].width = master_width;
+          current_layout->windows[i].height = usable_height;
+        } else {
+          current_layout->windows[i].x = OUTER_GAP + master_width + INNER_GAP;
+          current_layout->windows[i].y =
+              OUTER_GAP + (stack_height + INNER_GAP) * (tiling_index - 1);
+          current_layout->windows[i].width = stack_width;
+          current_layout->windows[i].height = stack_height;
+        }
+        tiling_index++;
+      }
+    }
+  }
+}
+
+void apply_layout(Display *dpy) {
+  TilingLayout *current_layout =
+      &workspace_manager.layouts[workspace_manager.current_workspace];
+  for (int i = 0; i < current_layout->count; i++) {
+    if (!current_layout->windows[i].is_floating) {
+      XMoveResizeWindow(
+          dpy, current_layout->windows[i].window, current_layout->windows[i].x,
+          current_layout->windows[i].y, current_layout->windows[i].width,
+          current_layout->windows[i].height);
+    }
   }
 }
 
 // Workspace functions
-void move_window_to_workspace(Display *dpy, int target_workspace) {
-  if (target_workspace < 0 || target_workspace >= MAX_WORKSPACES) return;
-
-  Window focused;
-  int revert_to;
-  XGetInputFocus(dpy, &focused, &revert_to);
-
-  TilingLayout *current_layout =
-      &workspace_manager.layouts[workspace_manager.current_workspace];
-  TilingLayout *target_layout = &workspace_manager.layouts[target_workspace];
-
-  // Find and remove the window from the current workspace
-  for (int i = 0; i < current_layout->count; i++) {
-    if (current_layout->windows[i].window == focused) {
-      // Remove from current workspace
-      WindowInfo win_info = current_layout->windows[i];
-      remove_window_from_current_workspace(dpy, focused);
-
-      // Add to target workspace
-      if (target_layout->count < MAX_WINDOWS) {
-        target_layout->windows[target_layout->count] = win_info;
-        target_layout->count++;
-        if (target_layout->master == None) {
-          target_layout->master = focused;
-        }
-      }
-
-      XUnmapWindow(dpy, focused);
-      break;
-    }
+void init_workspace_manager() {
+  workspace_manager.current_workspace = 0;
+  for (int i = 0; i < MAX_WORKSPACES; i++) {
+    workspace_manager.layouts[i].count = 0;
+    workspace_manager.layouts[i].master = None;
   }
-
-  update_client_list(
-      dpy, DefaultRootWindow(dpy),
-      workspace_manager.layouts[workspace_manager.current_workspace].windows,
-      workspace_manager.layouts[workspace_manager.current_workspace].count);
-
-  arrange_windows(dpy);
 }
 
-void switch_workspace(Display *dpy, int new_workspace) {
-  if (new_workspace < 0 || new_workspace >= MAX_WORKSPACES) return;
-  if (workspace_manager.current_workspace == new_workspace) return;
+void move_window_to_workspace(Display *dpy, int target_workspace) {
+  if (target_workspace > MAX_WORKSPACES) return;
 
-  // Hide windows in current workspace
   TilingLayout *current_layout =
       &workspace_manager.layouts[workspace_manager.current_workspace];
+  Window focused_window;
+  int revert_to;
+
+  // Current workspace
+  if (target_workspace == workspace_manager.current_workspace) {
+    return;
+  }
+
+  // Get the currently focused window
+  XGetInputFocus(dpy, &focused_window, &revert_to);
+
+  if (focused_window == None || focused_window == PointerRoot) {
+    printf("No window is focused\n");
+    return;
+  }
+
+  // Remove window from current workspace
+  remove_window_from_layout(focused_window, current_layout, dpy);
+  XUnmapWindow(dpy, focused_window);
+
+  // Add window to the target workspace
+  TilingLayout *target_layout = &workspace_manager.layouts[target_workspace];
+  add_window_to_layout(dpy, focused_window, target_layout);
+
+  // Set the window state to withdrawn to ensure it is managed correctly in the
+  // new workspace
+  XEvent ev;
+  ev.type = UnmapNotify;
+  ev.xunmap.window = focused_window;
+  XSendEvent(dpy, focused_window, False, StructureNotifyMask, &ev);
+
+  update_client_list(dpy, RootWindow(dpy, DefaultScreen(dpy)),
+                     target_layout->windows, target_layout->count);
+
+  printf("Moved window 0x%lx to workspace %d\n", focused_window,
+         target_workspace);
+}
+
+void switch_workspace(Display *dpy, int workspace_index) {
+  if (workspace_index > MAX_WORKSPACES) return;
+
+  if (workspace_manager.current_workspace == workspace_index) {
+    printf("Already on workspace %d\n", workspace_index);
+    return;
+  }
+
+  TilingLayout *current_layout =
+      &workspace_manager.layouts[workspace_manager.current_workspace];
+  TilingLayout *new_layout = &workspace_manager.layouts[workspace_index];
+
+  // Hide windows in current workspace
   for (int i = 0; i < current_layout->count; i++) {
     XUnmapWindow(dpy, current_layout->windows[i].window);
   }
 
-  // Switch to new workspace
-  workspace_manager.current_workspace = new_workspace;
-  update_client_list(
-      dpy, DefaultRootWindow(dpy),
-      workspace_manager.layouts[workspace_manager.current_workspace].windows,
-      workspace_manager.layouts[workspace_manager.current_workspace].count);
+  // Change to new workspace
+  workspace_manager.current_workspace = workspace_index;
 
   // Show windows in new workspace
-  TilingLayout *new_layout =
-      &workspace_manager.layouts[workspace_manager.current_workspace];
   for (int i = 0; i < new_layout->count; i++) {
     XMapWindow(dpy, new_layout->windows[i].window);
   }
 
-  // Update ewmh props
-  set_current_desktop(dpy, RootWindow(dpy, DefaultScreen(dpy)), new_workspace);
+  for (int i = new_layout->count - 1; i >= 0; i--) {
+    XRaiseWindow(dpy, new_layout->windows[i].window);
+  }
 
-  arrange_windows(dpy);
+  // Update ewmh properties
+  set_current_desktop(dpy, RootWindow(dpy, DefaultScreen(dpy)),
+                      workspace_index);
+  update_client_list(dpy, RootWindow(dpy, DefaultScreen(dpy)),
+                     new_layout->windows, new_layout->count);
+
+  // Reapply layout for the new workspace
+  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)),
+                 DisplayHeight(dpy, DefaultScreen(dpy)));
+  apply_layout(dpy);
+
+  printf("Switched to workspace %d\n", workspace_index);
+}
+
+void add_window_to_current_workspace(Display *dpy, Window window) {
+  TilingLayout *current_layout =
+      &workspace_manager.layouts[workspace_manager.current_workspace];
+  add_window_to_layout(dpy, window, current_layout);
+  XMapWindow(dpy, window);
+  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)),
+                 DisplayHeight(dpy, DefaultScreen(dpy)));
+  apply_layout(dpy);
+  update_client_list(dpy, RootWindow(dpy, DefaultScreen(dpy)),
+                     current_layout->windows, current_layout->count);
+}
+
+void remove_window_from_current_workspace(Display *dpy, Window window) {
+  TilingLayout *current_layout =
+      &workspace_manager.layouts[workspace_manager.current_workspace];
+  remove_window_from_layout(window, current_layout, dpy);
+  XUnmapWindow(dpy, window);
+  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)),
+                 DisplayHeight(dpy, DefaultScreen(dpy)));
+  apply_layout(dpy);
+  update_client_list(dpy, RootWindow(dpy, DefaultScreen(dpy)),
+                     current_layout->windows, current_layout->count);
 }
 
 void setup_keybindings(Display *dpy, Window root) {
@@ -586,32 +618,16 @@ void handle_map_request(XEvent ev, Display *dpy) {
     return;
   }
 
-  if (is_dock_window(dpy, ev.xmaprequest.window)) {
-    printf("Dock window, skipping window\n");
-    XMapWindow(dpy, ev.xmaprequest.window);
-    update_dock_geometry(dpy, ev.xmaprequest.window);
-    arrange_windows(dpy);
-    return;
-  }
-
   printf("Mapping window 0x%lx\n", ev.xmaprequest.window);
   XSelectInput(dpy, ev.xmaprequest.window,
                EnterWindowMask | FocusChangeMask | StructureNotifyMask);
   // Maps window and tiles it
   add_window_to_current_workspace(dpy, ev.xmaprequest.window);
-  update_client_list(
-      dpy, DefaultRootWindow(dpy),
-      workspace_manager.layouts[workspace_manager.current_workspace].windows,
-      workspace_manager.layouts[workspace_manager.current_workspace].count);
 }
 
 void handle_unmap_request(XEvent ev, Display *dpy) {
   // Unmaps window and tiles everything else
   remove_window_from_current_workspace(dpy, ev.xunmap.window);
-  update_client_list(
-      dpy, DefaultRootWindow(dpy),
-      workspace_manager.layouts[workspace_manager.current_workspace].windows,
-      workspace_manager.layouts[workspace_manager.current_workspace].count);
 
   focus_next_window(dpy);
 }
@@ -624,70 +640,41 @@ void handle_configure_request(XEvent ev, Display *dpy) {
   changes.width = req->width;
   changes.height = req->height;
   changes.border_width = req->border_width;
-  changes.sibling = req->above;
-  changes.stack_mode = req->detail;
 
   printf("Configure request: window 0x%lx, (%d, %d, %d, %d)\n", req->window,
          req->x, req->y, req->width, req->height);
 
-  // Check if it's a dock or bar window
-  if (is_dock_window(dpy, req->window)) {
-    XConfigureWindow(dpy, req->window, req->value_mask, &changes);
-    update_dock_geometry(dpy, req->window);
-    arrange_windows(dpy);
-    return;
+  // Determine if this window should have `XConfigureWindow` applied
+  char *window_name = NULL;
+  XFetchName(dpy, req->window, &window_name);
+  int should_configure = 1;
+
+  if (window_name) {
+    if (strcmp(window_name, "firefox") == 0) {
+      should_configure = 0;  // Skip Firefox
+    }
+    XFree(window_name);
   }
 
-  // Check if it's a floating window
-  bool is_floating = false;
-  TilingLayout *current_layout =
-      &workspace_manager.layouts[workspace_manager.current_workspace];
-  for (int i = 0; i < current_layout->count; i++) {
-    if (current_layout->windows[i].window == req->window) {
-      is_floating = current_layout->windows[i].is_floating;
+  // If not Firefox or similar apps, apply configuration
+  if (should_configure) {
+    XConfigureWindow(dpy, req->window, req->value_mask, &changes);
+  }
+
+  // Regardless, maintain the internal layout
+  for (int i = 0; i < layout.count; i++) {
+    if (layout.windows[i].window == req->window) {
+      layout.windows[i].x = changes.x;
+      layout.windows[i].y = changes.y;
+      layout.windows[i].width = changes.width;
+      layout.windows[i].height = changes.height;
       break;
     }
   }
 
-  if (is_floating) {
-    // For floating windows, apply the configuration as requested
-    XConfigureWindow(dpy, req->window, req->value_mask, &changes);
-  } else {
-    // For tiled windows, only apply size changes if they're smaller than
-    // requested
-    XWindowAttributes attr;
-    XGetWindowAttributes(dpy, req->window, &attr);
-
-    changes.width =
-        (req->value_mask & CWWidth) ? MAX(attr.width, req->width) : attr.width;
-    changes.height = (req->value_mask & CWHeight)
-                         ? MAX(attr.height, req->height)
-                         : attr.height;
-
-    // Ignore position changes for tiled windows
-    req->value_mask &= ~(CWX | CWY);
-
-    XConfigureWindow(dpy, req->window, req->value_mask, &changes);
-  }
-
-  // Update the internal layout
-  for (int i = 0; i < current_layout->count; i++) {
-    if (current_layout->windows[i].window == req->window) {
-      if (is_floating) {
-        current_layout->windows[i].x = changes.x;
-        current_layout->windows[i].y = changes.y;
-      }
-      current_layout->windows[i].width = changes.width;
-      current_layout->windows[i].height = changes.height;
-      break;
-    }
-  }
-
-  // Re-arrange windows if necessary
-  if (!is_floating) {
-    arrange_windows(dpy);
-  }
-
+  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)),
+                 DisplayHeight(dpy, DefaultScreen(dpy)));
+  apply_layout(dpy);
   XSync(dpy, False);
 }
 
@@ -783,11 +770,6 @@ void handle_keypress_event(XEvent ev, Display *dpy) {
   if (keysym == PREV_WINDOW_KEY && (ev.xkey.state & MODIFIER)) {
     focus_prev_window(dpy);
     return;
-  }
-
-  // Swap master
-  if (keysym == SWAP_MASTER_KEY && (ev.xkey.state & MODIFIER)) {
-    swap_master(dpy);
   }
 
   // Get all keybindings for programs
@@ -938,12 +920,7 @@ int main() {
   // Launch startup commands
   system("/usr/bin/autostart.sh &");
 
-  init_layouts();
-
-  update_client_list(
-      dpy, DefaultRootWindow(dpy),
-      workspace_manager.layouts[workspace_manager.current_workspace].windows,
-      workspace_manager.layouts[workspace_manager.current_workspace].count);
+  init_layout();
 
   // EWMH
   init_ewmh(dpy, root);
@@ -954,6 +931,7 @@ int main() {
   dock_geometry.width = 0;
   dock_geometry.height = 0;
 
+  init_workspace_manager();
   setup_keybindings(dpy, root);
   set_default_cursor(dpy, root);
 

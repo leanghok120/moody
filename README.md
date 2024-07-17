@@ -19,6 +19,8 @@ Moody is a very minimal and simple tiling window manager written in C. Moody's g
 - [x] Configurations
 - [x] Focus on hover
 - [x] Supports Bar (polybar)
+- [ ] Fullscreen (buggy)
+- [ ] Floating windows (buggy)
 
 ### Notes
 

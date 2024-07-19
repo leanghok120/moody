@@ -186,28 +186,51 @@ void draw_window_border(Display *dpy, Window window, int border_width,
   XSetWindowBorderWidth(dpy, window, border_width);
 }
 
+void raise_floating_windows(Display *dpy) {
+  TilingLayout *current_layout =
+      &workspace_manager.layouts[workspace_manager.current_workspace];
+  for (int i = 0; i < current_layout->count; i++) {
+    if (current_layout->windows[i].is_floating) {
+      XRaiseWindow(dpy, current_layout->windows[i].window);
+    }
+  }
+}
+
 // Focus window
 void focus_window(Display *dpy, Window window) {
-  TilingLayout current_workspace =
-      workspace_manager.layouts[workspace_manager.current_workspace];
+  TilingLayout *current_workspace =
+      &workspace_manager.layouts[workspace_manager.current_workspace];
 
   if (is_dock_window(dpy, window)) {
     return;
   }
 
-  // Interate through all windows in the current workspace and set an inactive
-  // border color for them
-  for (int i = 0; i < current_workspace.count; i++) {
-    draw_window_border(dpy, current_workspace.windows[i].window, BORDER_WIDTH,
+  // Set inactive border color for all windows
+  for (int i = 0; i < current_workspace->count; i++) {
+    draw_window_border(dpy, current_workspace->windows[i].window, BORDER_WIDTH,
                        INACTIVE_BORDER_COLOR);
   }
 
-  // Focus window and set active border color for window
-  XRaiseWindow(dpy, window);
+  // Focus window and set active border color
   XSetInputFocus(dpy, window, RevertToPointerRoot, CurrentTime);
   set_active_window(dpy, RootWindow(dpy, DefaultScreen(dpy)), window);
   draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
-  printf("Window 0x%lx raised and focused\n", window);
+
+  // Raise tiled windows first
+  for (int i = 0; i < current_workspace->count; i++) {
+    if (!current_workspace->windows[i].is_floating) {
+      XRaiseWindow(dpy, current_workspace->windows[i].window);
+    }
+  }
+
+  // Then raise all floating windows
+  for (int i = 0; i < current_workspace->count; i++) {
+    if (current_workspace->windows[i].is_floating) {
+      XRaiseWindow(dpy, current_workspace->windows[i].window);
+    }
+  }
+
+  printf("Window 0x%lx focused\n", window);
 }
 
 void focus_next_window(Display *dpy) {
@@ -297,15 +320,39 @@ bool is_floating_window(Display *dpy, Window win) {
   bool result = false;
 
   Atom net_wm_window_type = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+  Atom net_wm_window_type_dialog =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+  Atom net_wm_window_type_utility =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_UTILITY", False);
   Atom net_wm_window_type_toolbar =
       XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_TOOLBAR", False);
+  Atom net_wm_window_type_splash =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_SPLASH", False);
+  Atom net_wm_window_type_menu =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_MENU", False);
+  Atom net_wm_window_type_dropdown_menu =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU", False);
+  Atom net_wm_window_type_popup_menu =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_POPUP_MENU", False);
+  Atom net_wm_window_type_tooltip =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_TOOLTIP", False);
+  Atom net_wm_window_type_notification =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_NOTIFICATION", False);
 
   if (XGetWindowProperty(dpy, win, net_wm_window_type, 0, (~0L), False, XA_ATOM,
                          &actual_type, &actual_format, &nitems, &bytes_after,
                          (unsigned char **)&props) == Success) {
     if (actual_type == XA_ATOM && actual_format == 32) {
       for (unsigned long i = 0; i < nitems; i++) {
-        if (props[i] == props[i] == net_wm_window_type_toolbar) {
+        if (props[i] == net_wm_window_type_dialog ||
+            props[i] == net_wm_window_type_utility ||
+            props[i] == net_wm_window_type_toolbar ||
+            props[i] == net_wm_window_type_splash ||
+            props[i] == net_wm_window_type_menu ||
+            props[i] == net_wm_window_type_dropdown_menu ||
+            props[i] == net_wm_window_type_popup_menu ||
+            props[i] == net_wm_window_type_tooltip ||
+            props[i] == net_wm_window_type_notification) {
           result = true;
           break;
         }
@@ -316,7 +363,36 @@ bool is_floating_window(Display *dpy, Window win) {
     }
   }
 
+  // Check for transient windows (usually dialogs)
+  if (!result) {
+    Window transient_for = None;
+    if (XGetTransientForHint(dpy, win, &transient_for) &&
+        transient_for != None) {
+      result = true;
+    }
+  }
+
   return result;
+}
+
+void manage_floating_window(Display *dpy, Window window) {
+  XWindowAttributes attr;
+  XGetWindowAttributes(dpy, window, &attr);
+
+  // Center the window on the screen
+  int screen_width = DisplayWidth(dpy, DefaultScreen(dpy));
+  int screen_height = DisplayHeight(dpy, DefaultScreen(dpy));
+
+  int x = (screen_width - attr.width) / 2;
+  int y = (screen_height - attr.height) / 2;
+
+  // Ensure the window is not larger than the screen
+  int width = (attr.width > screen_width) ? screen_width : attr.width;
+  int height = (attr.height > screen_height) ? screen_height : attr.height;
+
+  XMoveResizeWindow(dpy, window, x, y, width, height);
+
+  XRaiseWindow(dpy, window);
 }
 
 void add_window_to_layout(Display *dpy, Window window, TilingLayout *layout) {
@@ -387,12 +463,12 @@ void arrange_window(Display *dpy, int screen_width, int screen_height) {
 
   // Count only non-floating windows
   for (int i = 0; i < current_layout->count; i++) {
-    if (!is_floating_window(dpy, current_layout->windows[i].window)) {
+    if (!current_layout->windows[i].is_floating) {
       tiling_count++;
     }
   }
 
-  // No windows to tile or only floating windows
+  // No windows to tile
   if (tiling_count == 0) return;
 
   // Calculate the usable area considering the gaps
@@ -402,7 +478,7 @@ void arrange_window(Display *dpy, int screen_width, int screen_height) {
   if (tiling_count == 1) {
     // Only one non-floating window, make it full screen with gaps
     for (int i = 0; i < current_layout->count; i++) {
-      if (!is_floating_window(dpy, current_layout->windows[i].window)) {
+      if (!current_layout->windows[i].is_floating) {
         current_layout->windows[i].x = OUTER_GAP;
         current_layout->windows[i].y = OUTER_GAP;
         current_layout->windows[i].width = usable_width;
@@ -424,7 +500,7 @@ void arrange_window(Display *dpy, int screen_width, int screen_height) {
 
     int tiling_index = 0;
     for (int i = 0; i < current_layout->count; i++) {
-      if (!is_floating_window(dpy, current_layout->windows[i].window)) {
+      if (!current_layout->windows[i].is_floating) {
         if (tiling_index == 0) {
           current_layout->windows[i].x = OUTER_GAP;
           current_layout->windows[i].y = OUTER_GAP;
@@ -548,6 +624,8 @@ void switch_workspace(Display *dpy, int workspace_index) {
                  DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
 
+  raise_floating_windows(dpy);
+
   printf("Switched to workspace %d\n", workspace_index);
 }
 
@@ -556,9 +634,17 @@ void add_window_to_current_workspace(Display *dpy, Window window) {
       &workspace_manager.layouts[workspace_manager.current_workspace];
   add_window_to_layout(dpy, window, current_layout);
   XMapWindow(dpy, window);
-  arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)),
-                 DisplayHeight(dpy, DefaultScreen(dpy)));
-  apply_layout(dpy);
+
+  if (is_floating_window(dpy, window)) {
+    manage_floating_window(dpy, window);
+  } else {
+    arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)),
+                   DisplayHeight(dpy, DefaultScreen(dpy)));
+    apply_layout(dpy);
+  }
+
+  raise_floating_windows(dpy);
+
   update_client_list(dpy, RootWindow(dpy, DefaultScreen(dpy)),
                      current_layout->windows, current_layout->count);
 }
@@ -623,6 +709,8 @@ void handle_map_request(XEvent ev, Display *dpy) {
                EnterWindowMask | FocusChangeMask | StructureNotifyMask);
   // Maps window and tiles it
   add_window_to_current_workspace(dpy, ev.xmaprequest.window);
+
+  raise_floating_windows(dpy);
 }
 
 void handle_unmap_request(XEvent ev, Display *dpy) {
@@ -675,6 +763,7 @@ void handle_configure_request(XEvent ev, Display *dpy) {
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)),
                  DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
+  raise_floating_windows(dpy);
   XSync(dpy, False);
 }
 

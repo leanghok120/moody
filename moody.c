@@ -213,6 +213,7 @@ void focus_window(Display *dpy, Window window) {
 
   // Focus window and set active border color
   XSetInputFocus(dpy, window, RevertToPointerRoot, CurrentTime);
+  XRaiseWindow(dpy, window);
   set_active_window(dpy, RootWindow(dpy, DefaultScreen(dpy)), window);
   draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
 

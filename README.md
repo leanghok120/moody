@@ -24,7 +24,7 @@ Moody is a very minimal and simple tiling window manager written in C. Moody's g
 
 ### Notes
 
-- Codebase is very messy
+- Codebase is very messy (Rewriting)
 
 ### Dependencies
 

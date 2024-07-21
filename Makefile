@@ -4,19 +4,16 @@ LDFLAGS = -lX11
 
 TARGET = moody
 
-SRC = moody.c src/wm.c
-OBJ = $(SRC:.c=.o)
+SRC = moody.c
 
-all: $(TARGET)
+all:
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $(TARGET)
 
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) -o $(TARGET) $(LDFLAGS)
-
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+build:
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $(TARGET)
 
 clean:
-	rm -rf $(OBJ) $(TARGET) /usr/bin/$(TARGET)
+	rm -rf /usr/bin/$(TARGET)
 
 run:
 	./preview.sh
@@ -24,6 +21,5 @@ run:
 install:
 	cp ./$(TARGET) /usr/bin/
 	cp ./autostart.sh /usr/bin/
-	cp ./moody.desktop /usr/share/xsessions/
 	chmod 755 /usr/bin/$(TARGET)
 	chmod 755 /usr/bin/autostart.sh

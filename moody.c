@@ -1,11 +1,7 @@
-#include "src/wm.h"
+#include <stdio.h>
 
 int main() {
-  if (!init_x()) {
-    return 1;
-  }
+  printf("Hello, World\n");
 
-  run_event_loop();
-  cleanup_x();
   return 0;
 }

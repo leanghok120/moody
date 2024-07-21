@@ -4,16 +4,19 @@ LDFLAGS = -lX11
 
 TARGET = moody
 
-SRC = moody.c
+SRC = moody.c src/wm.c
+OBJ = $(SRC:.c=.o)
 
-all:
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $(TARGET)
+all: $(TARGET)
 
-build:
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $(TARGET)
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) $(OBJ) -o $(TARGET) $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf /usr/bin/$(TARGET)
+	rm -rf $(OBJ) $(TARGET) /usr/bin/$(TARGET)
 
 run:
 	./preview.sh

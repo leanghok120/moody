@@ -216,20 +216,6 @@ void focus_window(Display *dpy, Window window) {
   set_active_window(dpy, RootWindow(dpy, DefaultScreen(dpy)), window);
   draw_window_border(dpy, window, BORDER_WIDTH, BORDER_COLOR);
 
-  // Raise tiled windows first
-  for (int i = 0; i < current_workspace->count; i++) {
-    if (!current_workspace->windows[i].is_floating) {
-      XRaiseWindow(dpy, current_workspace->windows[i].window);
-    }
-  }
-
-  // Then raise all floating windows
-  for (int i = 0; i < current_workspace->count; i++) {
-    if (current_workspace->windows[i].is_floating) {
-      XRaiseWindow(dpy, current_workspace->windows[i].window);
-    }
-  }
-
   printf("Window 0x%lx focused\n", window);
 }
 

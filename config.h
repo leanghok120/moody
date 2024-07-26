@@ -42,7 +42,6 @@ typedef struct {
 #define KILL_KEY XK_q        // mod+q for killing the current window
 #define NEXT_WINDOW_KEY XK_k // mod+k to focus next window
 #define PREV_WINDOW_KEY XK_j // mod+j to focus previous window
-#define TOGGLE_BAR_KEY XK_l  // mod+l to toggle bar
 
 static Keybinding keybindings[] = {
     {XK_Return, MODIFIER, "xterm", -1}, // mod+return to open xterm (terminal)

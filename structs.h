@@ -1,4 +1,3 @@
-#include <X11/X.h>
 #include "config.h"
 
 typedef struct {
@@ -7,8 +6,7 @@ typedef struct {
   int x, y;
   int width, height;
   int is_resizing;
-}
-DragState;
+} DragState;
 
 typedef struct {
   Window window;
@@ -16,24 +14,20 @@ typedef struct {
   int width, height;
   int border_width;
   int is_floating;
-}
-WindowInfo;
+} WindowInfo;
 
 typedef struct {
   WindowInfo windows[MAX_WINDOWS];
   int count;
   Window master; // Store the master window
-}
-TilingLayout;
+} TilingLayout;
 
 typedef struct {
   TilingLayout layouts[MAX_WORKSPACES];
   int current_workspace;
-}
-WorkspaceManager;
+} WorkspaceManager;
 
 typedef struct {
   int x, y;
   unsigned int width, height;
-}
-DockGeometry;
+} DockGeometry;

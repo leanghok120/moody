@@ -22,5 +22,6 @@ install:
 	cp ./$(TARGET) /usr/bin/
 	cp ./autostart.sh /usr/bin/
 	cp ./moody.desktop /usr/share/xsessions/
+	cp ./polybar/ ~/.config/ -r
 	chmod 755 /usr/bin/$(TARGET)
 	chmod 755 /usr/bin/autostart.sh

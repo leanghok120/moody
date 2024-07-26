@@ -76,7 +76,7 @@ void set_window_state(Window window, Atom state, bool add, Display *dpy) {
   e.xclient.window = window;
   e.xclient.message_type = net_wm_state;
   e.xclient.format = 32;
-  e.xclient.data.l[0] = add ? 1 : 0;  // 1 for add, 0 for remove
+  e.xclient.data.l[0] = add ? 1 : 0; // 1 for add, 0 for remove
   e.xclient.data.l[1] = state;
   XSendEvent(dpy, DefaultRootWindow(dpy), False,
              SubstructureNotifyMask | SubstructureRedirectMask, &e);
@@ -170,9 +170,9 @@ void hex_to_rgb(const char *hex, XColor *color, Display *dpy) {
     return;
   }
 
-  color->red = r * 257;    // Scale up to 16-bit
-  color->green = g * 257;  // Scale up to 16-bit
-  color->blue = b * 257;   // Scale up to 16-bit
+  color->red = r * 257;   // Scale up to 16-bit
+  color->green = g * 257; // Scale up to 16-bit
+  color->blue = b * 257;  // Scale up to 16-bit
   color->flags = DoRed | DoGreen | DoBlue;
   XAllocColor(dpy, DefaultColormap(dpy, DefaultScreen(dpy)), color);
 }
@@ -184,16 +184,6 @@ void draw_window_border(Display *dpy, Window window, int border_width,
 
   XSetWindowBorder(dpy, window, color.pixel);
   XSetWindowBorderWidth(dpy, window, border_width);
-}
-
-void raise_floating_windows(Display *dpy) {
-  TilingLayout *current_layout =
-      &workspace_manager.layouts[workspace_manager.current_workspace];
-  for (int i = 0; i < current_layout->count; i++) {
-    if (current_layout->windows[i].is_floating) {
-      XRaiseWindow(dpy, current_layout->windows[i].window);
-    }
-  }
 }
 
 // Focus window
@@ -223,10 +213,11 @@ void focus_window(Display *dpy, Window window) {
 void focus_next_window(Display *dpy) {
   TilingLayout *current_layout =
       &workspace_manager
-           .layouts[workspace_manager.current_workspace];  // get the current
-                                                           // workspace layout
-                                                           // struct
-  if (current_layout->count == 0) return;                  // No windows
+           .layouts[workspace_manager.current_workspace]; // get the current
+                                                          // workspace layout
+                                                          // struct
+  if (current_layout->count == 0)
+    return; // No windows
 
   Window focused_window;
   int revert_to;
@@ -234,7 +225,7 @@ void focus_next_window(Display *dpy) {
 
   int index = -1;
   for (int i = 0; i < current_layout->count;
-       i++) {  // loop through all windows in current workspace
+       i++) { // loop through all windows in current workspace
     if (current_layout->windows[i].window == focused_window) {
       index = i;
       break;
@@ -262,7 +253,8 @@ void focus_next_window(Display *dpy) {
 void focus_prev_window(Display *dpy) {
   TilingLayout *current_layout =
       &workspace_manager.layouts[workspace_manager.current_workspace];
-  if (current_layout->count == 0) return;  // No windows to focus on
+  if (current_layout->count == 0)
+    return; // No windows to focus on
 
   Window focused_window;
   int revert_to;
@@ -391,7 +383,7 @@ void add_window_to_layout(Display *dpy, Window window, TilingLayout *layout) {
   // Check if window already exists in layout
   for (int i = 0; i < layout->count; i++) {
     if (layout->windows[i].window == window) {
-      return;  // Window already exists in layout
+      return; // Window already exists in layout
     }
   }
 
@@ -444,7 +436,8 @@ void remove_window_from_layout(Window window, TilingLayout *layout,
 void arrange_window(Display *dpy, int screen_width, int screen_height) {
   TilingLayout *current_layout =
       &workspace_manager.layouts[workspace_manager.current_workspace];
-  if (current_layout->count == 0) return;  // No windows to arrange
+  if (current_layout->count == 0)
+    return; // No windows to arrange
 
   int tiling_count = 0;
 
@@ -456,7 +449,8 @@ void arrange_window(Display *dpy, int screen_width, int screen_height) {
   }
 
   // No windows to tile
-  if (tiling_count == 0) return;
+  if (tiling_count == 0)
+    return;
 
   // Calculate the usable area considering the gaps
   int usable_width = screen_width - 2 * OUTER_GAP;
@@ -482,7 +476,7 @@ void arrange_window(Display *dpy, int screen_width, int screen_height) {
     int stack_height =
         (usable_height - INNER_GAP * (tiling_count - 2)) / (tiling_count - 1);
     if (tiling_count == 2) {
-      stack_height = usable_height;  // Special case for two windows
+      stack_height = usable_height; // Special case for two windows
     }
 
     int tiling_index = 0;
@@ -529,7 +523,8 @@ void init_workspace_manager() {
 }
 
 void move_window_to_workspace(Display *dpy, int target_workspace) {
-  if (target_workspace > MAX_WORKSPACES) return;
+  if (target_workspace > MAX_WORKSPACES)
+    return;
 
   TilingLayout *current_layout =
       &workspace_manager.layouts[workspace_manager.current_workspace];
@@ -572,7 +567,8 @@ void move_window_to_workspace(Display *dpy, int target_workspace) {
 }
 
 void switch_workspace(Display *dpy, int workspace_index) {
-  if (workspace_index > MAX_WORKSPACES) return;
+  if (workspace_index > MAX_WORKSPACES)
+    return;
 
   if (workspace_manager.current_workspace == workspace_index) {
     printf("Already on workspace %d\n", workspace_index);
@@ -611,8 +607,6 @@ void switch_workspace(Display *dpy, int workspace_index) {
                  DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
 
-  raise_floating_windows(dpy);
-
   printf("Switched to workspace %d\n", workspace_index);
 }
 
@@ -629,8 +623,6 @@ void add_window_to_current_workspace(Display *dpy, Window window) {
                    DisplayHeight(dpy, DefaultScreen(dpy)));
     apply_layout(dpy);
   }
-
-  raise_floating_windows(dpy);
 
   update_client_list(dpy, RootWindow(dpy, DefaultScreen(dpy)),
                      current_layout->windows, current_layout->count);
@@ -696,8 +688,6 @@ void handle_map_request(XEvent ev, Display *dpy) {
                EnterWindowMask | FocusChangeMask | StructureNotifyMask);
   // Maps window and tiles it
   add_window_to_current_workspace(dpy, ev.xmaprequest.window);
-
-  raise_floating_windows(dpy);
 }
 
 void handle_unmap_request(XEvent ev, Display *dpy) {
@@ -726,7 +716,7 @@ void handle_configure_request(XEvent ev, Display *dpy) {
 
   if (window_name) {
     if (strcmp(window_name, "firefox") == 0) {
-      should_configure = 0;  // Skip Firefox
+      should_configure = 0; // Skip Firefox
     }
     XFree(window_name);
   }
@@ -750,7 +740,6 @@ void handle_configure_request(XEvent ev, Display *dpy) {
   arrange_window(dpy, DisplayWidth(dpy, DefaultScreen(dpy)),
                  DisplayHeight(dpy, DefaultScreen(dpy)));
   apply_layout(dpy);
-  raise_floating_windows(dpy);
   XSync(dpy, False);
 }
 
@@ -901,57 +890,62 @@ void handle_events(Display *dpy, Window root, int scr) {
     XNextEvent(dpy, &ev);
 
     switch (ev.type) {
-      case MapRequest:
-        printf("Map Request\n");
-        handle_map_request(ev, dpy);
-        focus_window(dpy, ev.xmaprequest.window);
-        break;
-      case UnmapNotify:
-        printf("Unmap Notify\n");
-        handle_unmap_request(ev, dpy);
-      case ConfigureRequest:
-        printf("Configure Request\n");
-        handle_configure_request(ev, dpy);
-        break;
-      case Expose:
-        if (ev.xexpose.count == 0) {
-          XClearWindow(dpy, ev.xexpose.window);
-        }
-      case EnterNotify:
-        if (ev.xcrossing.window != root) {
-          printf("Mouse entered window 0x%lx, raising and focusing it\n",
-                 ev.xcrossing.window);
+    case MapRequest:
+      printf("Map Request\n");
+      handle_map_request(ev, dpy);
+      focus_window(dpy, ev.xmaprequest.window);
+      break;
+    case UnmapNotify:
+      printf("Unmap Notify\n");
+      handle_unmap_request(ev, dpy);
+    case ConfigureRequest:
+      printf("Configure Request\n");
+      handle_configure_request(ev, dpy);
+      break;
+    case Expose:
+      if (ev.xexpose.count == 0) {
+        XClearWindow(dpy, ev.xexpose.window);
+      }
+    case EnterNotify:
+      if (ev.xcrossing.window != root) {
+        printf("Mouse entered window 0x%lx, raising and focusing it\n",
+               ev.xcrossing.window);
 
-          focus_window(dpy, ev.xcrossing.window);
-        }
-        break;
-      case ButtonPress:
-        if (ev.xbutton.subwindow != None) {
-          // Resizing and Moving
-          if ((ev.xbutton.state & MODIFIER) &&
-              (ev.xbutton.button == MOVE_BUTTON ||
-               ev.xbutton.button == RESIZE_BUTTON)) {
-            start_drag(dpy, ev, &drag);
+        focus_window(dpy, ev.xcrossing.window);
+        for (int i = 0; i < layout.count; i++) {
+          if (layout.windows[i].is_floating) {
+            XRaiseWindow(dpy, layout.windows[i].window);
           }
         }
-        break;
-      case MotionNotify:
-        while (XCheckTypedEvent(dpy, MotionNotify, &ev))
-          ;
-        update_drag(dpy, ev, &drag);
-        break;
-      case ButtonRelease:
-        end_drag(dpy, &drag);
-        break;
-      case KeyPress:
-        handle_keypress_event(ev, dpy);
-        break;
-      case ClientMessage:
-        handle_client_message(&ev, dpy);
-        break;
-      default:
-        printf("Other event type: %d\n", ev.type);
-        break;
+      }
+      break;
+    case ButtonPress:
+      if (ev.xbutton.subwindow != None) {
+        // Resizing and Moving
+        if ((ev.xbutton.state & MODIFIER) &&
+            (ev.xbutton.button == MOVE_BUTTON ||
+             ev.xbutton.button == RESIZE_BUTTON)) {
+          start_drag(dpy, ev, &drag);
+        }
+      }
+      break;
+    case MotionNotify:
+      while (XCheckTypedEvent(dpy, MotionNotify, &ev))
+        ;
+      update_drag(dpy, ev, &drag);
+      break;
+    case ButtonRelease:
+      end_drag(dpy, &drag);
+      break;
+    case KeyPress:
+      handle_keypress_event(ev, dpy);
+      break;
+    case ClientMessage:
+      handle_client_message(&ev, dpy);
+      break;
+    default:
+      printf("Other event type: %d\n", ev.type);
+      break;
     }
   }
 }

@@ -3,6 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef struct Client {
+  Window win;
+  int x, y, w, h;
+  struct Client *next;
+} Client;
+
+Client *clients = NULL;
+
 Display *dpy;
 Window root;
 
@@ -21,9 +29,19 @@ void checkotherwm() {
 void handleMapReq(XMapRequestEvent *ev) {
   int sw = DisplayWidth(dpy, DefaultScreen(dpy));
   int sh = DisplayHeight(dpy, DefaultScreen(dpy));
-  XMoveResizeWindow(dpy, ev->window, 0, 0, sw, sh);
 
-  XMapWindow(dpy, ev->window);
+  Client *c = malloc(sizeof(Client));
+  c->win = ev->window;
+  c->x = 0;
+  c->y = 0;
+  c->w = sw;
+  c->h = sh;
+  c->next = clients;
+  clients = c;
+
+  XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
+
+  XMapWindow(dpy, c->win);
 }
 
 void handleConfigureReq(XConfigureRequestEvent *ev) {
@@ -36,6 +54,19 @@ void handleConfigureReq(XConfigureRequestEvent *ev) {
   changes.sibling = ev->above;
   changes.stack_mode = ev->detail;
   XConfigureWindow(dpy, ev->window, ev->value_mask, &changes);
+}
+
+void handleDestroyNotify(Window w) {
+  Client **cc = &clients;
+  while (*cc) {
+    if ((*cc)->win == w) {
+      Client *tmp = *cc;
+      *cc = (*cc)->next;
+      free(tmp);
+      break;
+    }
+    cc = &(*cc)->next;
+  }
 }
 
 void run() {
@@ -52,6 +83,7 @@ void run() {
         handleConfigureReq(&ev.xconfigurerequest);
         break;
       case DestroyNotify:
+        handleDestroyNotify(ev.xdestroywindow.window);
         break;
       case ReparentNotify:
         break;

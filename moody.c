@@ -18,6 +18,26 @@ void checkotherwm() {
   XSetErrorHandler(error);
 }
 
+void handleMapReq(XMapRequestEvent *ev) {
+  int sw = DisplayWidth(dpy, DefaultScreen(dpy));
+  int sh = DisplayHeight(dpy, DefaultScreen(dpy));
+  XMoveResizeWindow(dpy, ev->window, 0, 0, sw, sh);
+
+  XMapWindow(dpy, ev->window);
+}
+
+void handleConfigureReq(XConfigureRequestEvent *ev) {
+  XWindowChanges changes;
+  changes.x = ev->x;
+  changes.y = ev->y;
+  changes.width = ev->width;
+  changes.height = ev->height;
+  changes.border_width = ev->border_width;
+  changes.sibling = ev->above;
+  changes.stack_mode = ev->detail;
+  XConfigureWindow(dpy, ev->window, ev->value_mask, &changes);
+}
+
 void run() {
   XEvent ev;
   while (1) {
@@ -26,21 +46,10 @@ void run() {
       case CreateNotify:
         break;
       case MapRequest:
-        XMapWindow(dpy, ev.xmaprequest.window);
-        printf("map window");
-        XFlush(dpy);
+        handleMapReq(&ev.xmaprequest);
         break;
       case ConfigureRequest:
-        XWindowChanges changes;
-        XConfigureRequestEvent request = ev.xconfigurerequest;
-        changes.x = request.x;
-        changes.y = request.y;
-        changes.width = request.width;
-        changes.height = request.height;
-        changes.border_width = request.border_width;
-        changes.sibling = request.above;
-        changes.stack_mode = request.detail;
-        XConfigureWindow(dpy, request.window, request.value_mask, &changes);
+        handleConfigureReq(&ev.xconfigurerequest);
         break;
       case DestroyNotify:
         break;

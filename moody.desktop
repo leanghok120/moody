@@ -1,6 +1,0 @@
-[Desktop Entry]
-Encoding=UTF-8
-Name=moody
-Comment=Cozy tiling window manager
-Exec=moody
-Type=XSession

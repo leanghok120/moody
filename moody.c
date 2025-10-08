@@ -15,6 +15,7 @@ void checkotherwm() {
   XErrorHandler error = XSetErrorHandler(xerrorstart);
   XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask | SubstructureNotifyMask);
   XSync(dpy, False);
+  XSetErrorHandler(error);
 }
 
 void run() {
@@ -23,6 +24,23 @@ void run() {
     XNextEvent(dpy, &ev);
     switch (ev.type) {
       case CreateNotify:
+        break;
+      case MapRequest:
+        XMapWindow(dpy, ev.xmaprequest.window);
+        printf("map window");
+        XFlush(dpy);
+        break;
+      case ConfigureRequest:
+        XWindowChanges changes;
+        XConfigureRequestEvent request = ev.xconfigurerequest;
+        changes.x = request.x;
+        changes.y = request.y;
+        changes.width = request.width;
+        changes.height = request.height;
+        changes.border_width = request.border_width;
+        changes.sibling = request.above;
+        changes.stack_mode = request.detail;
+        XConfigureWindow(dpy, request.window, request.value_mask, &changes);
         break;
       case DestroyNotify:
         break;

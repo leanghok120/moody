@@ -3,27 +3,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void run() {
-  while (1) {
-    // implement some stuff
-  }
-}
+Display *dpy;
+Window root;
 
 int xerrorstart(Display *dpy, XErrorEvent *ee) {
   printf("another wm is running\n");
   exit(1);
 }
 
+void checkotherwm() {
+  XErrorHandler error = XSetErrorHandler(xerrorstart);
+  XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask | SubstructureNotifyMask);
+  XSync(dpy, False);
+}
+
+void run() {
+  XEvent ev;
+  while (1) {
+    XNextEvent(dpy, &ev);
+    switch (ev.type) {
+      case CreateNotify:
+        break;
+      case DestroyNotify:
+        break;
+      case ReparentNotify:
+        break;
+    }
+  }
+}
+
 int main() {
-  Display *dpy = XOpenDisplay(NULL);
+  dpy = XOpenDisplay(NULL);
   if (dpy == NULL) {
-    printf("failed to open connection to X server");
+    printf("failed to open connection to X server\n");
     exit(1);
   }
-  Window root = DefaultRootWindow(dpy);
-	XErrorHandler error = XSetErrorHandler(xerrorstart);
-	XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask | SubstructureNotifyMask);
-	XSync(dpy, False);
+  root = DefaultRootWindow(dpy);
+  checkotherwm();
 
   run();
 

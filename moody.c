@@ -26,22 +26,55 @@ void checkotherwm() {
   XSetErrorHandler(error);
 }
 
-void handleMapReq(XMapRequestEvent *ev) {
+void tile() {
   int sw = DisplayWidth(dpy, DefaultScreen(dpy));
   int sh = DisplayHeight(dpy, DefaultScreen(dpy));
 
+  int n = 0;
+  for (Client *c = clients; c; c = c->next)
+    n++;
+  if (n == 0)
+    return;
+
+  int master_width = (n > 1) ? sw * 0.6 : sw;
+  int stack_width = sw - master_width;
+
+  int stack_y = 0;
+  int stack_count = n - 1;
+  int stack_h = (stack_count > 0) ? sh / stack_count : 0;
+
+  int i = 0;
+  for (Client *c = clients; c; c = c->next, i++) {
+    if (i == 0) {
+      // master window
+      c->x = 0;
+      c->y = 0;
+      c->w = master_width;
+      c->h = sh;
+
+      XMoveResizeWindow(dpy, c->win, 0, 0, master_width, sh);
+    } else {
+      // slave windows
+      c->x = master_width;
+      c->y = stack_y;
+      c->w = stack_width;
+      c->h = stack_h;
+
+      XMoveResizeWindow(dpy, c->win, master_width, stack_y, stack_width, stack_h);
+      stack_y += stack_h;
+    }
+  }
+}
+
+void handleMapReq(XMapRequestEvent *ev) {
   Client *c = malloc(sizeof(Client));
   c->win = ev->window;
-  c->x = 0;
-  c->y = 0;
-  c->w = sw;
-  c->h = sh;
   c->next = clients;
   clients = c;
 
-  XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
-
   XMapWindow(dpy, c->win);
+
+  tile();
 }
 
 void handleConfigureReq(XConfigureRequestEvent *ev) {
@@ -67,6 +100,8 @@ void handleDestroyNotify(Window w) {
     }
     cc = &(*cc)->next;
   }
+
+  tile();
 }
 
 void run() {

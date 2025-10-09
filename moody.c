@@ -1,7 +1,9 @@
 #include <X11/X.h>
 #include <X11/Xlib.h>
+#include <X11/keysym.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 typedef struct Client {
   Window win;
@@ -10,6 +12,7 @@ typedef struct Client {
 } Client;
 
 Client *clients = NULL;
+Client *focused = NULL;
 
 Display *dpy;
 Window root;
@@ -21,14 +24,14 @@ int xerrorstart(Display *dpy, XErrorEvent *ee) {
 
 void checkotherwm() {
   XErrorHandler error = XSetErrorHandler(xerrorstart);
-  XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask | SubstructureNotifyMask);
+  XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask);
   XSync(dpy, False);
   XSetErrorHandler(error);
 }
 
 void tile() {
-  int sw = DisplayWidth(dpy, DefaultScreen(dpy));
-  int sh = DisplayHeight(dpy, DefaultScreen(dpy));
+  int sw = DisplayWidth(dpy, DefaultScreen(dpy)) - 5;
+  int sh = DisplayHeight(dpy, DefaultScreen(dpy)) - 4;
 
   int n = 0;
   for (Client *c = clients; c; c = c->next)
@@ -66,6 +69,21 @@ void tile() {
   }
 }
 
+void focus(Client *c) {
+  if (!c) {
+    return;
+  }
+
+  if (focused && focused != c) {
+    XSetWindowBorder(dpy, focused->win, 0x45475a);
+  }
+
+  focused = c;
+  XRaiseWindow(dpy, c->win);
+  XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
+  XSetWindowBorder(dpy, c->win, 0x89b4fa);
+}
+
 void handleMapReq(XMapRequestEvent *ev) {
   Client *c = malloc(sizeof(Client));
   c->win = ev->window;
@@ -73,8 +91,10 @@ void handleMapReq(XMapRequestEvent *ev) {
   clients = c;
 
   XMapWindow(dpy, c->win);
+  XSetWindowBorderWidth(dpy, c->win, 2);
 
   tile();
+  focus(c);
 }
 
 void handleConfigureReq(XConfigureRequestEvent *ev) {
@@ -95,6 +115,12 @@ void handleDestroyNotify(Window w) {
     if ((*cc)->win == w) {
       Client *tmp = *cc;
       *cc = (*cc)->next;
+
+      if (focused == tmp) {
+        focused = clients;
+        focus(focused);
+      }
+
       free(tmp);
       break;
     }
@@ -102,6 +128,27 @@ void handleDestroyNotify(Window w) {
   }
 
   tile();
+}
+
+void handleKeyPress(XKeyPressedEvent *ev) {
+  KeySym keysym = XLookupKeysym(ev, 0);
+
+  if (ev->state & Mod1Mask) {
+    switch (keysym) {
+      case XK_Return:
+        if (fork() == 0) {
+          execlp("st", "st", NULL);
+          exit(1);
+        }
+        break;
+
+      case XK_q:
+        if (focused) {
+          XKillClient(dpy, focused->win);
+        }
+        break;
+    }
+  }
 }
 
 void run() {
@@ -117,10 +164,14 @@ void run() {
       case ConfigureRequest:
         handleConfigureReq(&ev.xconfigurerequest);
         break;
+      case UnmapNotify:
+        handleDestroyNotify(ev.xunmap.window);
+        break;
       case DestroyNotify:
         handleDestroyNotify(ev.xdestroywindow.window);
         break;
-      case ReparentNotify:
+      case KeyPress:
+        handleKeyPress(&ev.xkey);
         break;
     }
   }
@@ -134,6 +185,9 @@ int main() {
   }
   root = DefaultRootWindow(dpy);
   checkotherwm();
+
+  XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Return), Mod1Mask, root, False, GrabModeAsync, GrabModeAsync);
+  XGrabKey(dpy, XKeysymToKeycode(dpy, XK_q), Mod1Mask, root, False, GrabModeAsync, GrabModeAsync);
 
   run();
 

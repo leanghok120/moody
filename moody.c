@@ -4,16 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "moody.h"
+#include "config.h"
 
-typedef struct Client {
-  Window win;
-  int x, y, w, h;
-  struct Client *next;
-} Client;
+#define LEN(x) sizeof(x)/sizeof(x[0])
 
 Client *clients = NULL;
 Client *focused = NULL;
-
 Display *dpy;
 Window root;
 
@@ -31,6 +28,12 @@ void checkotherwm() {
   XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask);
   XSync(dpy, False);
   XSetErrorHandler(error);
+}
+
+void grabkeys() {
+  for (int i = 0; i < LEN(keys); i++) {
+    XGrabKey(dpy, XKeysymToKeycode(dpy, keys[i].keysym), keys[i].mod, root, False, GrabModeAsync, GrabModeAsync);
+  }
 }
 
 void tile() {
@@ -79,13 +82,29 @@ void focus(Client *c) {
   }
 
   if (focused && focused != c) {
-    XSetWindowBorder(dpy, focused->win, 0x45475a);
+    XSetWindowBorder(dpy, focused->win, border_color);
   }
 
   focused = c;
   XRaiseWindow(dpy, c->win);
   XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
-  XSetWindowBorder(dpy, c->win, 0x89b4fa);
+  XSetWindowBorder(dpy, c->win, border_color_active);
+}
+
+void spawn(const char *cmd, const char *args) {
+  if (fork() == 0) {
+    execlp(cmd, args, NULL);
+    exit(1);
+  }
+}
+
+void kill_client(const char *a, const char *b) {
+  if (focused) {
+    XSetErrorHandler(xerrordummy);
+    XSetCloseDownMode(dpy, DestroyAll);
+    XKillClient(dpy, focused->win);
+    XSync(dpy, False);
+  }
 }
 
 void handleMapReq(XMapRequestEvent *ev) {
@@ -101,7 +120,7 @@ void handleMapReq(XMapRequestEvent *ev) {
   clients = c;
 
   XMapWindow(dpy, c->win);
-  XSetWindowBorderWidth(dpy, c->win, 2);
+  XSetWindowBorderWidth(dpy, c->win, border_width);
 
   tile();
   focus(c);
@@ -143,23 +162,9 @@ void handleDestroyNotify(Window w) {
 void handleKeyPress(XKeyPressedEvent *ev) {
   KeySym keysym = XLookupKeysym(ev, 0);
 
-  if (ev->state & Mod1Mask) {
-    switch (keysym) {
-      case XK_Return:
-        if (fork() == 0) {
-          execlp("st", "st", NULL);
-          exit(1);
-        }
-        break;
-
-      case XK_q:
-        if (focused) {
-          XSetErrorHandler(xerrordummy);
-          XSetCloseDownMode(dpy, DestroyAll);
-          XKillClient(dpy, focused->win);
-          XSync(dpy, False);
-        }
-        break;
+  for (int i = 0; i < LEN(keys); i++) {
+    if (keys[i].keysym == keysym && keys[i].mod & modkey) {
+      keys[i].func(keys[i].cmd, keys[i].args);
     }
   }
 }
@@ -199,8 +204,7 @@ int main() {
   root = DefaultRootWindow(dpy);
   checkotherwm();
 
-  XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Return), Mod1Mask, root, False, GrabModeAsync, GrabModeAsync);
-  XGrabKey(dpy, XKeysymToKeycode(dpy, XK_q), Mod1Mask, root, False, GrabModeAsync, GrabModeAsync);
+  grabkeys();
 
   run();
 

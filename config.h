@@ -11,6 +11,7 @@ Key keys[] = {
   { MODKEY, XK_Return, spawn,            "st",        "" },
   { MODKEY, XK_space,  spawn,            "dmenu_run", "" },
   { MODKEY, XK_q,      kill_client,      "",          "" },
+  { MODKEY, XK_j,      focus_next,       "",          "" },
 
   { MODKEY, XK_1,      switch_workspace, "1",         "" },
   { MODKEY, XK_2,      switch_workspace, "2",         "" },

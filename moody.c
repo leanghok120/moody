@@ -101,6 +101,30 @@ void focus(Client *c) {
   XSetWindowBorder(dpy, c->win, border_color_active);
 }
 
+void focus_next(const char *a, const char *b)  {
+  if (!focused) {
+    return;
+  }
+
+  Client *c = focused->next;
+
+  while (c) {
+    if (c->workspace == current_ws) {
+      focus(focused->next);
+      return;
+    }
+    c = c->next;
+  }
+
+  // loop back to the head
+  for (c = clients; c; c = c->next) {
+    if (c->workspace == current_ws) {
+      focus(c);
+      return;
+    }
+  }
+}
+
 void spawn(const char *cmd, const char *args) {
   if (fork() == 0) {
     execlp(cmd, args, NULL);

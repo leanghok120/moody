@@ -28,3 +28,4 @@ void spawn(const char *cmd, const char *args);
 void kill_client(const char *a, const char *b); // a, b is only here to satisfy the callback arguments
 void switch_workspace(const char *workspace, const char *b);
 void move_to_workspace(const char *workspace, const char *b);
+void focus_next(const char *a, const char *b);

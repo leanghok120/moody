@@ -1,24 +1,34 @@
 #include "moody.h"
 #include <X11/X.h>
 
-static int modkey = Mod1Mask;
+#define MODKEY Mod1Mask
 static const unsigned long border_color = 0x45475a;
 static const unsigned long border_color_active = 0x89b4fa;
 static const unsigned int border_width = 2;
 
 Key keys[] = {
   // mod      key        func               cmd         arg
-  { Mod1Mask, XK_Return, spawn,            "st",        "" },
-  { Mod1Mask, XK_space,  spawn,            "dmenu_run", "" },
-  { Mod1Mask, XK_q,      kill_client,      "",          "" },
+  { MODKEY, XK_Return, spawn,            "st",        "" },
+  { MODKEY, XK_space,  spawn,            "dmenu_run", "" },
+  { MODKEY, XK_q,      kill_client,      "",          "" },
 
-  { Mod1Mask, XK_1,      switch_workspace, "1",         "" },
-  { Mod1Mask, XK_2,      switch_workspace, "2",         "" },
-  { Mod1Mask, XK_3,      switch_workspace, "3",         "" },
-  { Mod1Mask, XK_4,      switch_workspace, "4",         "" },
-  { Mod1Mask, XK_5,      switch_workspace, "5",         "" },
-  { Mod1Mask, XK_6,      switch_workspace, "6",         "" },
-  { Mod1Mask, XK_7,      switch_workspace, "7",         "" },
-  { Mod1Mask, XK_8,      switch_workspace, "8",         "" },
-  { Mod1Mask, XK_9,      switch_workspace, "9",         "" },
+  { MODKEY, XK_1,      switch_workspace, "1",         "" },
+  { MODKEY, XK_2,      switch_workspace, "2",         "" },
+  { MODKEY, XK_3,      switch_workspace, "3",         "" },
+  { MODKEY, XK_4,      switch_workspace, "4",         "" },
+  { MODKEY, XK_5,      switch_workspace, "5",         "" },
+  { MODKEY, XK_6,      switch_workspace, "6",         "" },
+  { MODKEY, XK_7,      switch_workspace, "7",         "" },
+  { MODKEY, XK_8,      switch_workspace, "8",         "" },
+  { MODKEY, XK_9,      switch_workspace, "9",         "" },
+
+  { MODKEY | ShiftMask, XK_1,      move_to_workspace, "1", "" },
+  { MODKEY | ShiftMask, XK_2,      move_to_workspace, "2", "" },
+  { MODKEY | ShiftMask, XK_3,      move_to_workspace, "3", "" },
+  { MODKEY | ShiftMask, XK_4,      move_to_workspace, "4", "" },
+  { MODKEY | ShiftMask, XK_5,      move_to_workspace, "5", "" },
+  { MODKEY | ShiftMask, XK_6,      move_to_workspace, "6", "" },
+  { MODKEY | ShiftMask, XK_7,      move_to_workspace, "7", "" },
+  { MODKEY | ShiftMask, XK_8,      move_to_workspace, "8", "" },
+  { MODKEY | ShiftMask, XK_9,      move_to_workspace, "9", "" },
 };

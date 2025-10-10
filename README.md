@@ -4,7 +4,7 @@
 
 - [x] windows tiling
 - [x] keybindings
-- [ ] workspaces
+- [x] workspaces
 - [ ] ewmh hints
 - [ ] floating windows
 - [ ] fullscreen windows

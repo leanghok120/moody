@@ -75,7 +75,6 @@ void tile() {
       c->y = stack_y;
       c->w = stack_width;
       c->h = stack_h;
-
       stack_y += stack_h;
     }
     XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
@@ -110,7 +109,7 @@ void spawn(const char *cmd, const char *args) {
 }
 
 void kill_client(const char *a, const char *b) {
-  if (focused) {
+  if (focused && focused->workspace == current_ws) {
     XSetErrorHandler(xerrordummy);
     XSetCloseDownMode(dpy, DestroyAll);
     XKillClient(dpy, focused->win);
@@ -124,6 +123,9 @@ void switch_workspace(const char *workspace, const char *b) {
     return;
   }
 
+  if (ws == current_ws)
+    return;
+
   for (Client *c = clients; c; c = c->next) {
     if (c->workspace == current_ws) {
       XUnmapWindow(dpy, c->win);
@@ -131,18 +133,56 @@ void switch_workspace(const char *workspace, const char *b) {
   }
 
   current_ws = ws;
+
   Client *first = NULL;
   for (Client *c = clients; c; c = c->next) {
     if (c->workspace == current_ws) {
       XMapWindow(dpy, c->win);
-      if (!first) {
-        first = c;
-      }
+      if (!first) first = c;
     }
   }
 
+  XSync(dpy, False);
+
   tile();
-  focus(first);
+
+  if (first) {
+    focus(first);
+  } else {
+    if (focused) {
+      XSetWindowBorder(dpy, focused->win, border_color);
+      focused = NULL;
+    }
+    XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
+  }
+}
+
+void move_to_workspace(const char *workspace, const char *b) {
+  if (!focused)
+    return;
+
+  int ws = atoi(workspace);
+  if (ws < 1 || ws > 9)
+    return;
+
+  int old_ws = focused->workspace;
+  focused->workspace = ws;
+
+  if (ws != current_ws) {
+    XUnmapWindow(dpy, focused->win);
+    focused = NULL;
+    for (Client *c = clients; c; c = c->next) {
+      if (c->workspace == old_ws) {
+        focus(c);
+        break;
+      }
+    }
+  } else {
+    XMapWindow(dpy, focused->win);
+    XSync(dpy, False);
+  }
+
+  tile();
 }
 
 void handleMapReq(XMapRequestEvent *ev) {
@@ -153,6 +193,7 @@ void handleMapReq(XMapRequestEvent *ev) {
   }
 
   Client *c = malloc(sizeof(Client));
+  if (!c) return;
   c->win = ev->window;
   c->next = clients;
   clients = c;
@@ -160,6 +201,8 @@ void handleMapReq(XMapRequestEvent *ev) {
 
   XMapWindow(dpy, c->win);
   XSetWindowBorderWidth(dpy, c->win, border_width);
+
+  XSync(dpy, False);
 
   tile();
   focus(c);
@@ -178,7 +221,6 @@ void handleConfigureReq(XConfigureRequestEvent *ev) {
 }
 
 void handleUnmapReq(Window w) {
-  XUnmapWindow(dpy, w);
   tile();
 }
 
@@ -190,20 +232,31 @@ void handleDestroyNotify(Window w) {
       *cc = (*cc)->next;
 
       if (focused == tmp) {
-        Client *first = NULL;
-        for (Client *c = clients; c; c = c->next) {
-          if (c->workspace == current_ws) {
-            first = c;
-            break;
-          }
-        }
-        focus(first);
+        focused = NULL;
       }
 
       free(tmp);
       break;
     }
     cc = &(*cc)->next;
+  }
+
+  Client *first = NULL;
+  for (Client *c = clients; c; c = c->next) {
+    if (c->workspace == current_ws) {
+      first = c;
+      break;
+    }
+  }
+
+  if (first)
+    focus(first);
+  else {
+    if (focused) {
+      XSetWindowBorder(dpy, focused->win, border_color);
+      focused = NULL;
+    }
+    XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
   }
 
   tile();
@@ -213,7 +266,7 @@ void handleKeyPress(XKeyPressedEvent *ev) {
   KeySym keysym = XLookupKeysym(ev, 0);
 
   for (int i = 0; i < LEN(keys); i++) {
-    if (keys[i].keysym == keysym && keys[i].mod & modkey) {
+    if (keys[i].keysym == keysym && keys[i].mod == (ev->state & (Mod1Mask | ShiftMask | ControlMask))) {
       keys[i].func(keys[i].cmd, keys[i].args);
     }
   }

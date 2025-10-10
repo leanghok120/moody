@@ -1,5 +1,6 @@
 #include <X11/X.h>
 #include <X11/Xlib.h>
+#include <X11/cursorfont.h>
 #include <X11/keysym.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +30,18 @@ void checkotherwm() {
   XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask);
   XSync(dpy, False);
   XSetErrorHandler(error);
+}
+
+void init() {
+  dpy = XOpenDisplay(NULL);
+  if (dpy == NULL) {
+    printf("failed to open connection to X server\n");
+    exit(1);
+  }
+  root = DefaultRootWindow(dpy);
+  checkotherwm();
+  Cursor cursor = XCreateFontCursor(dpy, XC_left_ptr);
+  XDefineCursor(dpy, root, cursor);
 }
 
 void grabkeys() {
@@ -323,13 +336,7 @@ void run() {
 }
 
 int main() {
-  dpy = XOpenDisplay(NULL);
-  if (dpy == NULL) {
-    printf("failed to open connection to X server\n");
-    exit(1);
-  }
-  root = DefaultRootWindow(dpy);
-  checkotherwm();
+  init();
 
   grabkeys();
 

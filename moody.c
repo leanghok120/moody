@@ -13,6 +13,7 @@ Client *clients = NULL;
 Client *focused = NULL;
 Display *dpy;
 Window root;
+int current_ws = 1;
 
 int xerrorstart(Display *dpy, XErrorEvent *ee) {
   printf("another wm is running\n");
@@ -42,7 +43,10 @@ void tile() {
 
   int n = 0;
   for (Client *c = clients; c; c = c->next)
-    n++;
+    if (c->workspace == current_ws) {
+      n++;
+    }
+
   if (n == 0)
     return;
 
@@ -54,15 +58,17 @@ void tile() {
   int stack_h = (stack_count > 0) ? sh / stack_count : 0;
 
   int i = 0;
-  for (Client *c = clients; c; c = c->next, i++) {
+  for (Client *c = clients; c; c = c->next) {
+    if (c->workspace != current_ws) {
+      continue;
+    }
+
     if (i == 0) {
       // master window
       c->x = 0;
       c->y = 0;
       c->w = master_width;
       c->h = sh;
-
-      XMoveResizeWindow(dpy, c->win, 0, 0, master_width, sh);
     } else {
       // slave windows
       c->x = master_width;
@@ -70,14 +76,19 @@ void tile() {
       c->w = stack_width;
       c->h = stack_h;
 
-      XMoveResizeWindow(dpy, c->win, master_width, stack_y, stack_width, stack_h);
       stack_y += stack_h;
     }
+    XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
+    i++;
   }
 }
 
 void focus(Client *c) {
   if (!c) {
+    return;
+  }
+
+  if (c->workspace != current_ws) {
     return;
   }
 
@@ -107,6 +118,33 @@ void kill_client(const char *a, const char *b) {
   }
 }
 
+void switch_workspace(const char *workspace, const char *b) {
+  int ws = atoi(workspace);
+  if (ws < 1 || ws > 9) {
+    return;
+  }
+
+  for (Client *c = clients; c; c = c->next) {
+    if (c->workspace == current_ws) {
+      XUnmapWindow(dpy, c->win);
+    }
+  }
+
+  current_ws = ws;
+  Client *first = NULL;
+  for (Client *c = clients; c; c = c->next) {
+    if (c->workspace == current_ws) {
+      XMapWindow(dpy, c->win);
+      if (!first) {
+        first = c;
+      }
+    }
+  }
+
+  tile();
+  focus(first);
+}
+
 void handleMapReq(XMapRequestEvent *ev) {
   XWindowAttributes wa;
   XGetWindowAttributes(dpy, ev->window, &wa);
@@ -118,6 +156,7 @@ void handleMapReq(XMapRequestEvent *ev) {
   c->win = ev->window;
   c->next = clients;
   clients = c;
+  c->workspace = current_ws;
 
   XMapWindow(dpy, c->win);
   XSetWindowBorderWidth(dpy, c->win, border_width);
@@ -138,6 +177,11 @@ void handleConfigureReq(XConfigureRequestEvent *ev) {
   XConfigureWindow(dpy, ev->window, ev->value_mask, &changes);
 }
 
+void handleUnmapReq(Window w) {
+  XUnmapWindow(dpy, w);
+  tile();
+}
+
 void handleDestroyNotify(Window w) {
   Client **cc = &clients;
   while (*cc) {
@@ -146,8 +190,14 @@ void handleDestroyNotify(Window w) {
       *cc = (*cc)->next;
 
       if (focused == tmp) {
-        focused = clients;
-        focus(focused);
+        Client *first = NULL;
+        for (Client *c = clients; c; c = c->next) {
+          if (c->workspace == current_ws) {
+            first = c;
+            break;
+          }
+        }
+        focus(first);
       }
 
       free(tmp);
@@ -183,7 +233,7 @@ void run() {
         handleConfigureReq(&ev.xconfigurerequest);
         break;
       case UnmapNotify:
-        handleDestroyNotify(ev.xunmap.window);
+        handleUnmapReq(ev.xunmap.window);
         break;
       case DestroyNotify:
         handleDestroyNotify(ev.xdestroywindow.window);

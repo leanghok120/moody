@@ -3,7 +3,7 @@
 ## todos
 
 - [x] windows tiling
-- [ ] keybindings
+- [x] keybindings
 - [ ] workspaces
 - [ ] ewmh hints
 - [ ] floating windows

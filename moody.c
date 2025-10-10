@@ -22,6 +22,10 @@ int xerrorstart(Display *dpy, XErrorEvent *ee) {
   exit(1);
 }
 
+int xerrordummy(Display *dpy, XErrorEvent *ee) {
+  return 0;
+}
+
 void checkotherwm() {
   XErrorHandler error = XSetErrorHandler(xerrorstart);
   XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask);
@@ -144,7 +148,10 @@ void handleKeyPress(XKeyPressedEvent *ev) {
 
       case XK_q:
         if (focused) {
+          XSetErrorHandler(xerrordummy);
+          XSetCloseDownMode(dpy, DestroyAll);
           XKillClient(dpy, focused->win);
+          XSync(dpy, False);
         }
         break;
     }

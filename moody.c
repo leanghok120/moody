@@ -89,6 +89,12 @@ void focus(Client *c) {
 }
 
 void handleMapReq(XMapRequestEvent *ev) {
+  XWindowAttributes wa;
+  XGetWindowAttributes(dpy, ev->window, &wa);
+  if (wa.override_redirect) {
+    return;
+  }
+
   Client *c = malloc(sizeof(Client));
   c->win = ev->window;
   c->next = clients;

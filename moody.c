@@ -15,7 +15,7 @@ Client *clients = NULL;
 Client *focused = NULL;
 Display *dpy;
 Window root;
-Atom NET_SUPPORTED, NET_WM_NAME, NET_NUMBER_OF_DESKTOPS, NET_CURRENT_DESKTOP, NET_ACTIVE_WINDOW;
+Atom NET_SUPPORTED, NET_WM_NAME, NET_NUMBER_OF_DESKTOPS, NET_CURRENT_DESKTOP, NET_ACTIVE_WINDOW, NET_WM_STATE, NET_WM_STATE_FULLSCREEN;
 int current_ws = 1;
 
 int xerrorstart(Display *dpy, XErrorEvent *ee) {
@@ -44,6 +44,8 @@ void init_ewmh() {
   NET_NUMBER_OF_DESKTOPS = get_atom("_NET_NUMBER_OF_DESKTOPS");
   NET_CURRENT_DESKTOP = get_atom("_NET_CURRENT_DESKTOP");
   NET_ACTIVE_WINDOW = get_atom("_NET_ACTIVE_WINDOW");
+  NET_WM_STATE = get_atom("_NET_WM_STATE");
+  NET_WM_STATE_FULLSCREEN = get_atom("_NET_WM_STATE_FULLSCREEN");
 }
 
 void set_supported_ewmh() {
@@ -53,12 +55,14 @@ void set_supported_ewmh() {
     NET_NUMBER_OF_DESKTOPS,
     NET_CURRENT_DESKTOP,
     NET_ACTIVE_WINDOW,
+    NET_WM_STATE,
+    NET_WM_STATE_FULLSCREEN,
   };
 
   XChangeProperty(dpy, root,
-        NET_SUPPORTED, XA_ATOM,
-        32, PropModeReplace,
-        (unsigned char *)supported, sizeof(supported) / sizeof(supported[0])
+      NET_SUPPORTED, XA_ATOM,
+      32, PropModeReplace,
+      (unsigned char *)supported, sizeof(supported) / sizeof(supported[0])
       );
 }
 
@@ -78,6 +82,14 @@ void update_cur_desktop_hints() {
 
 void update_active_window_hint() {
   XChangeProperty(dpy, root, NET_ACTIVE_WINDOW, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&focused->win, 1);
+}
+
+void update_window_state_hint(Client *c) {
+  if (c->is_fullscreen) {
+    XChangeProperty(dpy, c->win, NET_WM_STATE, XA_ATOM, 32, PropModeReplace, (unsigned char *)&NET_WM_STATE_FULLSCREEN, 1);
+  } else {
+    XDeleteProperty(dpy, c->win, NET_WM_STATE);
+  }
 }
 
 void init() {
@@ -103,6 +115,15 @@ void grabkeys() {
   }
 }
 
+Client *wintoclient(Window win) {
+  for (Client *c = clients; c; c = c->next) {
+    if (c->win == win) {
+      return c;
+    }
+  }
+  return NULL;
+}
+
 void tile() {
   int sw = DisplayWidth(dpy, DefaultScreen(dpy)) - 5;
   int sh = DisplayHeight(dpy, DefaultScreen(dpy)) - 4;
@@ -125,7 +146,7 @@ void tile() {
 
   int i = 0;
   for (Client *c = clients; c; c = c->next) {
-    if (c->workspace != current_ws) {
+    if (c->workspace != current_ws || c->is_fullscreen) {
       continue;
     }
 
@@ -279,6 +300,32 @@ void move_to_workspace(const char *workspace, const char *b) {
   tile();
 }
 
+void handle_net_wm_state(XClientMessageEvent *ev) {
+  Client *c = wintoclient(ev->window);
+  if (!c) return;
+
+  Atom a1 = ev->data.l[1];
+  Atom a2 = ev->data.l[2];
+  long action = ev->data.l[0];
+
+  if (a1 == NET_WM_STATE_FULLSCREEN || a2 == NET_WM_STATE_FULLSCREEN) {
+    if (action == 1 || (action == 2 && !c->is_fullscreen)) {
+      c->is_fullscreen = 1;
+      XMoveResizeWindow(dpy, c->win, 0, 0,
+          DisplayWidth(dpy, DefaultScreen(dpy)),
+          DisplayHeight(dpy, DefaultScreen(dpy)));
+      XSetWindowBorder(dpy, c->win, 0);
+      XChangeProperty(dpy, c->win, NET_WM_STATE, XA_ATOM, 32, PropModeReplace,
+          (unsigned char *)&NET_WM_STATE_FULLSCREEN, 1);
+    } else if (action == 0 || (action == 2 && c->is_fullscreen)) {
+      c->is_fullscreen = 0;
+      XDeleteProperty(dpy, c->win, NET_WM_STATE);
+      XSetWindowBorder(dpy, c->win, border_width);
+      tile();
+    }
+  }
+}
+
 void handleMapReq(XMapRequestEvent *ev) {
   XWindowAttributes wa;
   XGetWindowAttributes(dpy, ev->window, &wa);
@@ -289,6 +336,7 @@ void handleMapReq(XMapRequestEvent *ev) {
   Client *c = malloc(sizeof(Client));
   if (!c) return;
   c->win = ev->window;
+  c->is_fullscreen = 0;
   c->next = clients;
   clients = c;
   c->workspace = current_ws;
@@ -387,6 +435,9 @@ void run() {
         break;
       case KeyPress:
         handleKeyPress(&ev.xkey);
+        break;
+      case ClientMessage:
+        handle_net_wm_state(&ev.xclient);
         break;
     }
   }

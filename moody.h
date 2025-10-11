@@ -7,6 +7,7 @@ typedef struct Client {
   Window win;
   int x, y, w, h;
   int workspace;
+  int is_fullscreen;
   struct Client *next;
 } Client;
 

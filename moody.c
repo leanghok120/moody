@@ -15,7 +15,7 @@ Client *clients = NULL;
 Client *focused = NULL;
 Display *dpy;
 Window root;
-Atom NET_SUPPORTED, NET_WM_NAME, NET_NUMBER_OF_DESKTOPS;
+Atom NET_SUPPORTED, NET_WM_NAME, NET_NUMBER_OF_DESKTOPS, NET_CURRENT_DESKTOP;
 int current_ws = 1;
 
 int xerrorstart(Display *dpy, XErrorEvent *ee) {
@@ -42,6 +42,7 @@ void init_ewmh() {
   NET_SUPPORTED = get_atom("_NET_SUPPORTED");
   NET_WM_NAME = get_atom("_NET_WM_NAME");
   NET_NUMBER_OF_DESKTOPS = get_atom("_NET_NUMBER_OF_DESKTOPS");
+  NET_CURRENT_DESKTOP = get_atom("_NET_CURRENT_DESKTOP");
 }
 
 void set_supported_ewmh() {
@@ -49,6 +50,7 @@ void set_supported_ewmh() {
     NET_SUPPORTED,
     NET_WM_NAME,
     NET_NUMBER_OF_DESKTOPS,
+    NET_CURRENT_DESKTOP,
   };
 
   XChangeProperty(dpy, root,
@@ -59,7 +61,17 @@ void set_supported_ewmh() {
 }
 
 void set_ewmh_atoms() {
+  long num_desktops = 9;
+
   XChangeProperty(dpy, root, NET_WM_NAME, XA_STRING, 8, PropModeReplace, (unsigned char *)"moody", 5);
+  XChangeProperty(dpy, root, NET_NUMBER_OF_DESKTOPS, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&num_desktops, 1);
+}
+
+void update_cur_desktop_hints() {
+  // _NET_CURRENT_DESKTOP accepts 0 to _NET_NUMBER_OF_DESKTOPS
+  long cur_ws = current_ws - 1;
+
+  XChangeProperty(dpy, root, NET_CURRENT_DESKTOP, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&cur_ws, 1);
 }
 
 void init() {
@@ -76,6 +88,7 @@ void init() {
   init_ewmh();
   set_supported_ewmh();
   set_ewmh_atoms();
+  update_cur_desktop_hints();
 }
 
 void grabkeys() {
@@ -214,6 +227,8 @@ void switch_workspace(const char *workspace, const char *b) {
   }
 
   XSync(dpy, False);
+
+  update_cur_desktop_hints();
 
   tile();
 

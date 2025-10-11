@@ -1,4 +1,5 @@
 #include <X11/X.h>
+#include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
@@ -14,6 +15,7 @@ Client *clients = NULL;
 Client *focused = NULL;
 Display *dpy;
 Window root;
+Atom NET_SUPPORTED, NET_WM_NAME, NET_NUMBER_OF_DESKTOPS;
 int current_ws = 1;
 
 int xerrorstart(Display *dpy, XErrorEvent *ee) {
@@ -32,6 +34,34 @@ void checkotherwm() {
   XSetErrorHandler(error);
 }
 
+Atom get_atom(const char *name) {
+  return XInternAtom(dpy, name, False);
+}
+
+void init_ewmh() {
+  NET_SUPPORTED = get_atom("_NET_SUPPORTED");
+  NET_WM_NAME = get_atom("_NET_WM_NAME");
+  NET_NUMBER_OF_DESKTOPS = get_atom("_NET_NUMBER_OF_DESKTOPS");
+}
+
+void set_supported_ewmh() {
+  Atom supported[] = {
+    NET_SUPPORTED,
+    NET_WM_NAME,
+    NET_NUMBER_OF_DESKTOPS,
+  };
+
+  XChangeProperty(dpy, root,
+        NET_SUPPORTED, XA_ATOM,
+        32, PropModeReplace,
+        (unsigned char *)supported, sizeof(supported) / sizeof(supported[0])
+      );
+}
+
+void set_ewmh_atoms() {
+  XChangeProperty(dpy, root, NET_WM_NAME, XA_STRING, 8, PropModeReplace, (unsigned char *)"moody", 5);
+}
+
 void init() {
   dpy = XOpenDisplay(NULL);
   if (dpy == NULL) {
@@ -42,6 +72,10 @@ void init() {
   checkotherwm();
   Cursor cursor = XCreateFontCursor(dpy, XC_left_ptr);
   XDefineCursor(dpy, root, cursor);
+
+  init_ewmh();
+  set_supported_ewmh();
+  set_ewmh_atoms();
 }
 
 void grabkeys() {

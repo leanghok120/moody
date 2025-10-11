@@ -15,7 +15,7 @@ Client *clients = NULL;
 Client *focused = NULL;
 Display *dpy;
 Window root;
-Atom NET_SUPPORTED, NET_WM_NAME, NET_NUMBER_OF_DESKTOPS, NET_CURRENT_DESKTOP;
+Atom NET_SUPPORTED, NET_WM_NAME, NET_NUMBER_OF_DESKTOPS, NET_CURRENT_DESKTOP, NET_ACTIVE_WINDOW;
 int current_ws = 1;
 
 int xerrorstart(Display *dpy, XErrorEvent *ee) {
@@ -43,6 +43,7 @@ void init_ewmh() {
   NET_WM_NAME = get_atom("_NET_WM_NAME");
   NET_NUMBER_OF_DESKTOPS = get_atom("_NET_NUMBER_OF_DESKTOPS");
   NET_CURRENT_DESKTOP = get_atom("_NET_CURRENT_DESKTOP");
+  NET_ACTIVE_WINDOW = get_atom("_NET_ACTIVE_WINDOW");
 }
 
 void set_supported_ewmh() {
@@ -51,6 +52,7 @@ void set_supported_ewmh() {
     NET_WM_NAME,
     NET_NUMBER_OF_DESKTOPS,
     NET_CURRENT_DESKTOP,
+    NET_ACTIVE_WINDOW,
   };
 
   XChangeProperty(dpy, root,
@@ -72,6 +74,10 @@ void update_cur_desktop_hints() {
   long cur_ws = current_ws - 1;
 
   XChangeProperty(dpy, root, NET_CURRENT_DESKTOP, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&cur_ws, 1);
+}
+
+void update_active_window_hint() {
+  XChangeProperty(dpy, root, NET_ACTIVE_WINDOW, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&focused->win, 1);
 }
 
 void init() {
@@ -159,6 +165,8 @@ void focus(Client *c) {
   XRaiseWindow(dpy, c->win);
   XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
   XSetWindowBorder(dpy, c->win, border_color_active);
+
+  update_active_window_hint();
 }
 
 void focus_next(const char *a, const char *b)  {

@@ -13,6 +13,7 @@
 
 Client *clients = NULL;
 Client *focused = NULL;
+Client *fullscreen_client = NULL;
 Display *dpy;
 Window root;
 Atom NET_SUPPORTED, NET_WM_NAME, NET_NUMBER_OF_DESKTOPS, NET_CURRENT_DESKTOP, NET_ACTIVE_WINDOW, NET_WM_STATE, NET_WM_STATE_FULLSCREEN;
@@ -137,6 +138,9 @@ void tile() {
   if (n == 0)
     return;
 
+  if (fullscreen_client && fullscreen_client->workspace == current_ws)
+    return;
+
   int master_width = (n > 1) ? sw * 0.6 : sw;
   int stack_width = sw - master_width;
 
@@ -175,6 +179,10 @@ void focus(Client *c) {
   }
 
   if (c->workspace != current_ws) {
+    return;
+  }
+
+  if (fullscreen_client && fullscreen_client->workspace == current_ws) {
     return;
   }
 
@@ -310,20 +318,23 @@ void handle_net_wm_state(XClientMessageEvent *ev) {
 
   if (a1 == NET_WM_STATE_FULLSCREEN || a2 == NET_WM_STATE_FULLSCREEN) {
     if (action == 1 || (action == 2 && !c->is_fullscreen)) {
+      fullscreen_client = c;
       c->is_fullscreen = 1;
       XMoveResizeWindow(dpy, c->win, 0, 0,
           DisplayWidth(dpy, DefaultScreen(dpy)),
           DisplayHeight(dpy, DefaultScreen(dpy)));
-      XSetWindowBorder(dpy, c->win, 0);
-      XChangeProperty(dpy, c->win, NET_WM_STATE, XA_ATOM, 32, PropModeReplace,
-          (unsigned char *)&NET_WM_STATE_FULLSCREEN, 1);
+      XSetWindowBorderWidth(dpy, c->win, 0);
+      XRaiseWindow(dpy, c->win);
     } else if (action == 0 || (action == 2 && c->is_fullscreen)) {
+      fullscreen_client = NULL;
       c->is_fullscreen = 0;
-      XDeleteProperty(dpy, c->win, NET_WM_STATE);
-      XSetWindowBorder(dpy, c->win, border_width);
+      XSetWindowBorderWidth(dpy, c->win, border_width);
       tile();
+      focus(c);
     }
   }
+
+  update_window_state_hint(c);
 }
 
 void handleMapReq(XMapRequestEvent *ev) {

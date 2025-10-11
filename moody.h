@@ -21,6 +21,7 @@ typedef struct {
 
 extern Client *clients;
 extern Client *focused;
+extern Client *fullscreen_client;
 extern Display *dpy;
 extern Window root;
 extern int current_ws;

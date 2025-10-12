@@ -10,6 +10,8 @@ Key keys[] = {
   // mod      key        func               cmd         arg
   { MODKEY, XK_Return, spawn,            "st",        "" },
   { MODKEY, XK_space,  spawn,            "dmenu_run", "" },
+  { MODKEY, XK_F11,    spawn,            "pactl",     "set-sink-volume @DEFAULT_SINK@ -10%" },
+  { MODKEY, XK_F12,    spawn,            "pactl",     "set-sink-volume @DEFAULT_SINK@ +10%" },
   { MODKEY, XK_q,      kill_client,      "",          "" },
   { MODKEY, XK_j,      focus_next,       "",          "" },
 

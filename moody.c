@@ -3,6 +3,7 @@
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -223,8 +224,27 @@ void focus_next(const char *a, const char *b)  {
 }
 
 void spawn(const char *cmd, const char *args) {
+  char *argv[32];
+  int i = 0;
+
+  argv[i++] = (char *)cmd;
+
+  if (args && args[0] != '\0') {
+    char buf[256];
+    strncpy(buf, args, sizeof(buf));
+    buf[sizeof(buf)-1] = '\0';
+
+    char *token = strtok(buf, " ");
+    while (token && i < 31) {
+      argv[i++] = token;
+      token = strtok(NULL, " ");
+    }
+  }
+
+  argv[i] = NULL;
+
   if (fork() == 0) {
-    execlp(cmd, args, NULL);
+    execvp(cmd, argv);
     exit(1);
   }
 }

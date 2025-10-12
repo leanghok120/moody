@@ -30,7 +30,7 @@ int xerrordummy(Display *dpy, XErrorEvent *ee) {
 
 void checkotherwm() {
   XErrorHandler error = XSetErrorHandler(xerrorstart);
-  XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask);
+  XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask | EnterWindowMask | FocusChangeMask);
   XSync(dpy, False);
   XSetErrorHandler(error);
 }
@@ -351,6 +351,7 @@ void handleMapReq(XMapRequestEvent *ev) {
   c->next = clients;
   clients = c;
   c->workspace = current_ws;
+  XSelectInput(dpy, c->win, EnterWindowMask | FocusChangeMask);
 
   XMapWindow(dpy, c->win);
   XSetWindowBorderWidth(dpy, c->win, border_width);
@@ -449,6 +450,9 @@ void run() {
         break;
       case ClientMessage:
         handle_net_wm_state(&ev.xclient);
+        break;
+      case EnterNotify:
+        focus(wintoclient(ev.xcrossing.window));
         break;
     }
   }

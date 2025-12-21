@@ -127,8 +127,8 @@ Client *wintoclient(Window win) {
 }
 
 void tile() {
-  int sw = DisplayWidth(dpy, DefaultScreen(dpy)) - 5;
-  int sh = DisplayHeight(dpy, DefaultScreen(dpy)) - 4;
+  int sw = DisplayWidth(dpy, DefaultScreen(dpy)) - border_width - 1;
+  int sh = DisplayHeight(dpy, DefaultScreen(dpy)) - border_width - 1;
 
   int n = 0;
   for (Client *c = clients; c; c = c->next)

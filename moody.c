@@ -440,7 +440,7 @@ void handleKeyPress(XKeyPressedEvent *ev) {
   KeySym keysym = XLookupKeysym(ev, 0);
 
   for (int i = 0; i < LEN(keys); i++) {
-    if (keys[i].keysym == keysym && keys[i].mod == (ev->state & (Mod1Mask | ShiftMask | ControlMask))) {
+    if (keys[i].keysym == keysym && keys[i].mod == (ev->state & (MODKEY | ShiftMask | ControlMask))) {
       keys[i].func(keys[i].cmd, keys[i].args);
     }
   }

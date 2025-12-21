@@ -2,14 +2,14 @@
 #include <X11/X.h>
 
 #define MODKEY Mod1Mask
-static const unsigned long border_color = 0x45475a;
-static const unsigned long border_color_active = 0x89b4fa;
-static const unsigned int border_width = 2;
+static const unsigned long border_color = 0x000000;
+static const unsigned long border_color_active = 0xb8bb26;
+static const unsigned int border_width = 1;
 
 Key keys[] = {
   // mod      key        func               cmd         arg
   { MODKEY, XK_Return, spawn,            "st",        "" },
-  { MODKEY, XK_space,  spawn,            "dmenu_run", "" },
+  { MODKEY, XK_space,  spawn,            "cmenu-run", "" },
   { MODKEY, XK_F11,    spawn,            "pactl",     "set-sink-volume @DEFAULT_SINK@ -10%" },
   { MODKEY, XK_F12,    spawn,            "pactl",     "set-sink-volume @DEFAULT_SINK@ +10%" },
   { MODKEY, XK_q,      kill_client,      "",          "" },

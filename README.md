@@ -17,13 +17,14 @@ A tiny tiling windows manager (*300 sloc*)
 
 - Clone this repo
 - Run `sudo make clean install`
+- Add `exec moody` to your .xinitrc
 
 If you are using a display manager, save the following to `/usr/share/xsessions/moody.desktop`
 
 ```
 [Desktop Entry]
 Name=moody
-Comment=This session runs sowm as desktop manager
+Comment=tiny tiling windows manager
 Exec=moody
 Type=Application
 ```

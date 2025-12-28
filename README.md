@@ -24,9 +24,20 @@ If you are using a display manager, save the following to `/usr/share/xsessions/
 [Desktop Entry]
 Name=moody
 Comment=This session runs sowm as desktop manager
-Exec=sowm
+Exec=moody
 Type=Application
 ```
+
+## Keybindings
+
+| keys                      | action                 |
+| ------------------------- | -----------------------|
+| `Alt` + `enter`           | open st (terminal)     |
+| `Alt` + `space`           | open cmenu (launcher)  |
+| `Alt` + `q`               | kill window            |
+| `Alt` + `1-9`             | swap workspaces        |
+| `Alt` + `Shift` +`1-9`    | send to workspace      |
+| `Alt` + `j`               | focus cycle            |
 
 ## Configuration
 

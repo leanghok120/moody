@@ -1,27 +1,17 @@
-CC = gcc
-CFLAGS = -Wall
-LDFLAGS = -lX11
+all: moody
 
-TARGET = moody
-
-SRC = moody.c
-
-all:
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $(TARGET)
-
-build:
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $(TARGET)
+moody: moody.c moody.h config.h
+	gcc -o moody moody.c -lX11
 
 clean:
-	rm -rf /usr/bin/$(TARGET)
-
-run:
-	./preview.sh
+	rm -f /usr/local/bin/moody
 
 install:
-	cp ./$(TARGET) /usr/bin/
-	cp ./autostart.sh /usr/bin/
-	cp ./moody.desktop /usr/share/xsessions/
-	cp ./polybar/ ~/.config/ -r
-	chmod 755 /usr/bin/$(TARGET)
-	chmod 755 /usr/bin/autostart.sh
+	mv ./moody /usr/local/bin
+
+test:
+	Xephyr -ac -screen 1200x800 :1 &
+	sleep 0.5
+	DISPLAY=:1 ./moody &
+	sleep 0.3
+	DISPLAY=:1 st

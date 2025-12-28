@@ -4,8 +4,7 @@ A tiny tiling windows manager (*300 sloc*)
 
 - Tiling only
 - Workspaces
-- Keyboard only workflow
-- Alt-Tab window focusing
+- No gaps
 - No window borders
 - No ICCCM
 - No EWMH
@@ -28,6 +27,10 @@ Comment=This session runs sowm as desktop manager
 Exec=sowm
 Type=Application
 ```
+
+## Configuration
+
+You can configure moody using the `config.h` file which is similar to dwm. Just make sure to recompile after editting `config.h`.
 
 ## Thanks
 

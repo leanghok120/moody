@@ -1,37 +1,33 @@
 #include "moody.h"
-#include <X11/X.h>
 
 #define MODKEY Mod1Mask
-static const unsigned long border_color = 0x000000;
-static const unsigned long border_color_active = 0xb8bb26;
-static const unsigned int border_width = 1;
+
+const char* term[] = { "st", NULL };
+const char* launcher[] = { "cmenu-run", NULL };
 
 Key keys[] = {
-  // mod      key        func               cmd         arg
-  { MODKEY, XK_Return, spawn,            "st",        "" },
-  { MODKEY, XK_space,  spawn,            "cmenu-run", "" },
-  { MODKEY, XK_F11,    spawn,            "pactl",     "set-sink-volume @DEFAULT_SINK@ -10%" },
-  { MODKEY, XK_F12,    spawn,            "pactl",     "set-sink-volume @DEFAULT_SINK@ +10%" },
-  { MODKEY, XK_q,      kill_client,      "",          "" },
-  { MODKEY, XK_j,      focus_next,       "",          "" },
+  { MODKEY, XK_Return, spawn, {.cmd = term} },
+  { MODKEY, XK_space, spawn, {.cmd = launcher} },
+  { MODKEY, XK_q, kill, {0} },
+  { MODKEY, XK_j, focusnext, {0} },
 
-  { MODKEY, XK_1,      switch_workspace, "1",         "" },
-  { MODKEY, XK_2,      switch_workspace, "2",         "" },
-  { MODKEY, XK_3,      switch_workspace, "3",         "" },
-  { MODKEY, XK_4,      switch_workspace, "4",         "" },
-  { MODKEY, XK_5,      switch_workspace, "5",         "" },
-  { MODKEY, XK_6,      switch_workspace, "6",         "" },
-  { MODKEY, XK_7,      switch_workspace, "7",         "" },
-  { MODKEY, XK_8,      switch_workspace, "8",         "" },
-  { MODKEY, XK_9,      switch_workspace, "9",         "" },
+  { MODKEY, XK_1, switchws, {.i = 1} },
+  { MODKEY, XK_2, switchws, {.i = 2} },
+  { MODKEY, XK_3, switchws, {.i = 3} },
+  { MODKEY, XK_4, switchws, {.i = 4} },
+  { MODKEY, XK_5, switchws, {.i = 5} },
+  { MODKEY, XK_6, switchws, {.i = 6} },
+  { MODKEY, XK_7, switchws, {.i = 7} },
+  { MODKEY, XK_8, switchws, {.i = 8} },
+  { MODKEY, XK_9, switchws, {.i = 9} },
 
-  { MODKEY | ShiftMask, XK_1,      move_to_workspace, "1", "" },
-  { MODKEY | ShiftMask, XK_2,      move_to_workspace, "2", "" },
-  { MODKEY | ShiftMask, XK_3,      move_to_workspace, "3", "" },
-  { MODKEY | ShiftMask, XK_4,      move_to_workspace, "4", "" },
-  { MODKEY | ShiftMask, XK_5,      move_to_workspace, "5", "" },
-  { MODKEY | ShiftMask, XK_6,      move_to_workspace, "6", "" },
-  { MODKEY | ShiftMask, XK_7,      move_to_workspace, "7", "" },
-  { MODKEY | ShiftMask, XK_8,      move_to_workspace, "8", "" },
-  { MODKEY | ShiftMask, XK_9,      move_to_workspace, "9", "" },
+  { MODKEY | ShiftMask, XK_1, sendws, {.i = 1} },
+  { MODKEY | ShiftMask, XK_2, sendws, {.i = 2} },
+  { MODKEY | ShiftMask, XK_3, sendws, {.i = 3} },
+  { MODKEY | ShiftMask, XK_4, sendws, {.i = 4} },
+  { MODKEY | ShiftMask, XK_5, sendws, {.i = 5} },
+  { MODKEY | ShiftMask, XK_6, sendws, {.i = 6} },
+  { MODKEY | ShiftMask, XK_7, sendws, {.i = 7} },
+  { MODKEY | ShiftMask, XK_8, sendws, {.i = 8} },
+  { MODKEY | ShiftMask, XK_9, sendws, {.i = 9} },
 };

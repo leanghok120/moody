@@ -1,177 +1,44 @@
 #include <X11/X.h>
-#include <X11/Xatom.h>
 #include <X11/Xlib.h>
-#include <X11/cursorfont.h>
-#include <X11/keysym.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "moody.h"
 #include "config.h"
-
-#define LEN(x) sizeof(x)/sizeof(x[0])
 
 Client *clients = NULL;
 Client *focused = NULL;
-Client *fullscreen_client = NULL;
+
 Display *dpy;
 Window root;
-Atom NET_SUPPORTED, NET_WM_NAME, NET_NUMBER_OF_DESKTOPS, NET_CURRENT_DESKTOP, NET_ACTIVE_WINDOW, NET_WM_STATE, NET_WM_STATE_FULLSCREEN;
 int current_ws = 1;
 
-int xerrorstart(Display *dpy, XErrorEvent *ee) {
-  printf("another wm is running\n");
-  exit(1);
-}
-
+// functions for error handling
 int xerrordummy(Display *dpy, XErrorEvent *ee) {
   return 0;
 }
 
-void checkotherwm() {
-  XErrorHandler error = XSetErrorHandler(xerrorstart);
-  XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask | EnterWindowMask | FocusChangeMask);
-  XSync(dpy, False);
-  XSetErrorHandler(error);
+int xerrorstart(Display *dpy, XErrorEvent *ee) {
+  fprintf(stderr, "another wm is running\n");
+  exit(1);
+  return -1;
 }
 
-Atom get_atom(const char *name) {
-  return XInternAtom(dpy, name, False);
+// taken from sowm: https://github.com/dylanaraps/sowm
+void spawn(const Arg *arg) {
+  if (fork()) return;
+  if (dpy) close(ConnectionNumber(dpy));
+
+  setsid();
+  execvp((char*)arg->cmd[0], (char**)arg->cmd);
 }
 
-void init_ewmh() {
-  NET_SUPPORTED = get_atom("_NET_SUPPORTED");
-  NET_WM_NAME = get_atom("_NET_WM_NAME");
-  NET_NUMBER_OF_DESKTOPS = get_atom("_NET_NUMBER_OF_DESKTOPS");
-  NET_CURRENT_DESKTOP = get_atom("_NET_CURRENT_DESKTOP");
-  NET_ACTIVE_WINDOW = get_atom("_NET_ACTIVE_WINDOW");
-  NET_WM_STATE = get_atom("_NET_WM_STATE");
-  NET_WM_STATE_FULLSCREEN = get_atom("_NET_WM_STATE_FULLSCREEN");
-}
-
-void set_supported_ewmh() {
-  Atom supported[] = {
-    NET_SUPPORTED,
-    NET_WM_NAME,
-    NET_NUMBER_OF_DESKTOPS,
-    NET_CURRENT_DESKTOP,
-    NET_ACTIVE_WINDOW,
-    NET_WM_STATE,
-    NET_WM_STATE_FULLSCREEN,
-  };
-
-  XChangeProperty(dpy, root,
-      NET_SUPPORTED, XA_ATOM,
-      32, PropModeReplace,
-      (unsigned char *)supported, sizeof(supported) / sizeof(supported[0])
-      );
-}
-
-void set_ewmh_atoms() {
-  long num_desktops = 9;
-
-  XChangeProperty(dpy, root, NET_WM_NAME, XA_STRING, 8, PropModeReplace, (unsigned char *)"moody", 5);
-  XChangeProperty(dpy, root, NET_NUMBER_OF_DESKTOPS, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&num_desktops, 1);
-}
-
-void update_cur_desktop_hints() {
-  // _NET_CURRENT_DESKTOP accepts 0 to _NET_NUMBER_OF_DESKTOPS
-  long cur_ws = current_ws - 1;
-
-  XChangeProperty(dpy, root, NET_CURRENT_DESKTOP, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&cur_ws, 1);
-}
-
-void update_active_window_hint() {
-  XChangeProperty(dpy, root, NET_ACTIVE_WINDOW, XA_WINDOW, 32, PropModeReplace, (unsigned char *)&focused->win, 1);
-}
-
-void update_window_state_hint(Client *c) {
-  if (c->is_fullscreen) {
-    XChangeProperty(dpy, c->win, NET_WM_STATE, XA_ATOM, 32, PropModeReplace, (unsigned char *)&NET_WM_STATE_FULLSCREEN, 1);
-  } else {
-    XDeleteProperty(dpy, c->win, NET_WM_STATE);
-  }
-}
-
-void init() {
-  dpy = XOpenDisplay(NULL);
-  if (dpy == NULL) {
-    printf("failed to open connection to X server\n");
-    exit(1);
-  }
-  root = DefaultRootWindow(dpy);
-  checkotherwm();
-  Cursor cursor = XCreateFontCursor(dpy, XC_left_ptr);
-  XDefineCursor(dpy, root, cursor);
-
-  init_ewmh();
-  set_supported_ewmh();
-  set_ewmh_atoms();
-  update_cur_desktop_hints();
-}
-
-void grabkeys() {
-  for (int i = 0; i < LEN(keys); i++) {
-    XGrabKey(dpy, XKeysymToKeycode(dpy, keys[i].keysym), keys[i].mod, root, False, GrabModeAsync, GrabModeAsync);
-  }
-}
-
-Client *wintoclient(Window win) {
-  for (Client *c = clients; c; c = c->next) {
-    if (c->win == win) {
-      return c;
-    }
-  }
-  return NULL;
-}
-
-void tile() {
-  int sw = DisplayWidth(dpy, DefaultScreen(dpy)) - border_width - 1;
-  int sh = DisplayHeight(dpy, DefaultScreen(dpy)) - border_width - 1;
-
-  int n = 0;
-  for (Client *c = clients; c; c = c->next)
-    if (c->workspace == current_ws) {
-      n++;
-    }
-
-  if (n == 0)
+void kill(const Arg *arg) {
+  if (focused == NULL)
     return;
 
-  if (fullscreen_client && fullscreen_client->workspace == current_ws)
-    return;
-
-  int master_width = (n > 1) ? sw * 0.6 : sw;
-  int stack_width = sw - master_width;
-
-  int stack_y = 0;
-  int stack_count = n - 1;
-  int stack_h = (stack_count > 0) ? sh / stack_count : 0;
-
-  int i = 0;
-  for (Client *c = clients; c; c = c->next) {
-    if (c->workspace != current_ws || c->is_fullscreen) {
-      continue;
-    }
-
-    if (i == 0) {
-      // master window
-      c->x = 0;
-      c->y = 0;
-      c->w = master_width;
-      c->h = sh;
-    } else {
-      // slave windows
-      c->x = master_width;
-      c->y = stack_y;
-      c->w = stack_width;
-      c->h = stack_h;
-      stack_y += stack_h;
-    }
-    XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
-    i++;
-  }
+  XSetCloseDownMode(dpy, DestroyAll);
+  XSetErrorHandler(xerrordummy);
+  XKillClient(dpy, focused->win);
 }
 
 void focus(Client *c) {
@@ -179,269 +46,206 @@ void focus(Client *c) {
     return;
   }
 
-  if (c->workspace != current_ws) {
-    return;
-  }
-
-  if (fullscreen_client && fullscreen_client->workspace == current_ws) {
-    return;
-  }
-
-  if (focused && focused != c) {
-    XSetWindowBorder(dpy, focused->win, border_color);
-  }
-
   focused = c;
-  XRaiseWindow(dpy, c->win);
-  XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
-  XSetWindowBorder(dpy, c->win, border_color_active);
-
-  update_active_window_hint();
+  XRaiseWindow(dpy, focused->win);
+  XSetInputFocus(dpy, focused->win, RevertToPointerRoot, CurrentTime);
 }
 
-void focus_next(const char *a, const char *b)  {
-  if (!focused) {
-    return;
-  }
+void focusnext(const Arg *arg) {
+  Client *c = NULL;
 
-  Client *c = focused->next;
-
-  while (c) {
-    if (c->workspace == current_ws) {
-      focus(focused->next);
-      return;
-    }
-    c = c->next;
-  }
-
-  // loop back to the head
-  for (c = clients; c; c = c->next) {
-    if (c->workspace == current_ws) {
-      focus(c);
-      return;
-    }
-  }
-}
-
-void spawn(const char *cmd, const char *args) {
-  char *argv[32];
-  int i = 0;
-
-  argv[i++] = (char *)cmd;
-
-  if (args && args[0] != '\0') {
-    char buf[256];
-    strncpy(buf, args, sizeof(buf));
-    buf[sizeof(buf)-1] = '\0';
-
-    char *token = strtok(buf, " ");
-    while (token && i < 31) {
-      argv[i++] = token;
-      token = strtok(NULL, " ");
-    }
-  }
-
-  argv[i] = NULL;
-
-  if (fork() == 0) {
-    execvp(cmd, argv);
-    exit(1);
-  }
-}
-
-void kill_client(const char *a, const char *b) {
-  if (focused && focused->workspace == current_ws) {
-    XSetErrorHandler(xerrordummy);
-    XSetCloseDownMode(dpy, DestroyAll);
-    XKillClient(dpy, focused->win);
-    XSync(dpy, False);
-  }
-}
-
-void switch_workspace(const char *workspace, const char *b) {
-  int ws = atoi(workspace);
-  if (ws < 1 || ws > 9) {
-    return;
-  }
-
-  if (ws == current_ws)
+  if (!clients || !focused)
     return;
 
-  for (Client *c = clients; c; c = c->next) {
-    if (c->workspace == current_ws) {
-      XUnmapWindow(dpy, c->win);
+  // find next window in the current workspace
+  for (Client *i = focused->next; i; i = i->next) {
+    if (i->workspace == current_ws) {
+      c = i;
+      break;
     }
   }
 
-  current_ws = ws;
-
-  Client *first = NULL;
-  for (Client *c = clients; c; c = c->next) {
-    if (c->workspace == current_ws) {
-      XMapWindow(dpy, c->win);
-      if (!first) first = c;
-    }
-  }
-
-  XSync(dpy, False);
-
-  update_cur_desktop_hints();
-
-  tile();
-
-  if (first) {
-    focus(first);
-  } else {
-    if (focused) {
-      XSetWindowBorder(dpy, focused->win, border_color);
-      focused = NULL;
-    }
-    XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
-  }
-}
-
-void move_to_workspace(const char *workspace, const char *b) {
-  if (!focused)
-    return;
-
-  int ws = atoi(workspace);
-  if (ws < 1 || ws > 9)
-    return;
-
-  int old_ws = focused->workspace;
-  focused->workspace = ws;
-
-  if (ws != current_ws) {
-    XUnmapWindow(dpy, focused->win);
-    focused = NULL;
-    for (Client *c = clients; c; c = c->next) {
-      if (c->workspace == old_ws) {
-        focus(c);
+  // find first window in the current workspace
+  if (!c) {
+    for (Client *i = clients; i && i != focused; i = i->next) {
+      if (i->workspace == current_ws) {
+        c = i;
         break;
       }
     }
-  } else {
-    XMapWindow(dpy, focused->win);
-    XSync(dpy, False);
   }
 
-  tile();
+  if (!c)
+    return;
+
+  focus(c);
 }
 
-void handle_net_wm_state(XClientMessageEvent *ev) {
-  Client *c = wintoclient(ev->window);
-  if (!c) return;
+void switchws(const Arg *arg) {
+  int next = arg->i;
+  if (next == current_ws) return;
 
-  Atom a1 = ev->data.l[1];
-  Atom a2 = ev->data.l[2];
-  long action = ev->data.l[0];
+  current_ws = next;
 
-  if (a1 == NET_WM_STATE_FULLSCREEN || a2 == NET_WM_STATE_FULLSCREEN) {
-    if (action == 1 || (action == 2 && !c->is_fullscreen)) {
-      fullscreen_client = c;
-      c->is_fullscreen = 1;
-      XMoveResizeWindow(dpy, c->win, 0, 0,
-          DisplayWidth(dpy, DefaultScreen(dpy)),
-          DisplayHeight(dpy, DefaultScreen(dpy)));
-      XSetWindowBorderWidth(dpy, c->win, 0);
-      XRaiseWindow(dpy, c->win);
-    } else if (action == 0 || (action == 2 && c->is_fullscreen)) {
-      fullscreen_client = NULL;
-      c->is_fullscreen = 0;
-      XSetWindowBorderWidth(dpy, c->win, border_width);
-      tile();
+  Client *c;
+  for (c = clients; c; c = c->next) {
+    if (c->workspace == current_ws) {
+      XMapWindow(dpy, c->win);
       focus(c);
+    } else {
+      XUnmapWindow(dpy, c->win);
+    }
+  }
+}
+
+void sendws(const Arg *arg) {
+  int next = arg->i;
+  if (next == current_ws) return;
+
+  focused->workspace = next;
+  XUnmapWindow(dpy, focused->win);
+  focusnext(NULL);
+}
+
+void tile() {
+  int n = 0;
+  for (Client *c = clients; c; c = c->next) {
+    if (c->workspace == current_ws) {
+      n++;
     }
   }
 
-  update_window_state_hint(c);
+  if (n == 0) return;
+
+  int i = 0;
+  int masterw = WIDTH / 1.6;
+  int stacky = 0;
+  int stackh = (n > 1) ? HEIGHT / (n-1) : 0;
+
+  for (Client *c = clients; c; c = c->next) {
+    if (n == 1) {
+      XMoveResizeWindow(dpy, c->win, 0, 0, WIDTH, HEIGHT);
+      break;
+    }
+
+    if (c->workspace == current_ws) {
+      if (i == 0) {
+        // master
+        XMoveResizeWindow(dpy, c->win, 0, 0, masterw, HEIGHT);
+      } else {
+        // slave
+        XMoveResizeWindow(dpy, c->win, masterw, stacky, masterw, stackh);
+        stacky += stackh;
+      }
+      i++;
+    }
+  }
 }
 
-void handleMapReq(XMapRequestEvent *ev) {
+void init() {
+  dpy = XOpenDisplay(NULL);
+  if (dpy == NULL) {
+    perror("XOpenDisplay");
+    exit(1);
+  }
+  root = XDefaultRootWindow(dpy);
+  int scr = XDefaultScreen(dpy);
+
+  // check other wm
+  XSetErrorHandler(xerrorstart);
+  XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask);
+  XSync(dpy, False);
+  XSetErrorHandler(xerrorstart);
+  XSync(dpy, False);
+}
+
+void cleanup() {
+  Client *c = clients;
+  while (c) {
+    Client *next = c->next;
+    free(c);
+    c = next;
+  }
+
+  XCloseDisplay(dpy);
+}
+
+void grabkeys() {
+  for (int i = 0; i < LEN(keys); i++) {
+    XGrabKey(dpy, XKeysymToKeycode(dpy, keys[i].keysym), keys[i].mod, root, True, GrabModeAsync, GrabModeAsync);
+  }
+}
+
+void mapreq(XEvent *ev) {
+  XMapRequestEvent *e = &ev->xmaprequest;
   XWindowAttributes wa;
-  XGetWindowAttributes(dpy, ev->window, &wa);
+
+  XGetWindowAttributes(dpy, e->window, &wa);
   if (wa.override_redirect) {
     return;
   }
 
+  // add to clients linked list
   Client *c = malloc(sizeof(Client));
-  if (!c) return;
-  c->win = ev->window;
-  c->is_fullscreen = 0;
+  c->win = e->window;
+  c->workspace = current_ws;
   c->next = clients;
   clients = c;
-  c->workspace = current_ws;
-  XSelectInput(dpy, c->win, EnterWindowMask | FocusChangeMask);
+  focused = c;
 
-  XMapWindow(dpy, c->win);
-  XSetWindowBorderWidth(dpy, c->win, border_width);
+  tile();
+  XMapWindow(dpy, e->window);
+  XRaiseWindow(dpy, e->window);
+  XSetInputFocus(dpy, e->window, RevertToPointerRoot, CurrentTime);
 
   XSync(dpy, False);
-
-  tile();
-  focus(c);
 }
 
-void handleConfigureReq(XConfigureRequestEvent *ev) {
-  XWindowChanges changes;
-  changes.x = ev->x;
-  changes.y = ev->y;
-  changes.width = ev->width;
-  changes.height = ev->height;
-  changes.border_width = ev->border_width;
-  changes.sibling = ev->above;
-  changes.stack_mode = ev->detail;
-  XConfigureWindow(dpy, ev->window, ev->value_mask, &changes);
-}
+void destroynoti(XEvent *ev) {
+  XDestroyWindowEvent *e = &ev->xdestroywindow;
 
-void handleUnmapReq(Window w) {
-  tile();
-}
-
-void handleDestroyNotify(Window w) {
-  Client **cc = &clients;
-  while (*cc) {
-    if ((*cc)->win == w) {
-      Client *tmp = *cc;
-      *cc = (*cc)->next;
-
-      if (focused == tmp) {
-        focused = NULL;
+  // remove from clients linked list and change focus
+  Client *cur = clients;
+  Client *prev = NULL;
+  while (cur) {
+    if (cur->win == e->window) {
+      if (prev) {
+        prev->next = cur->next;
+      } else {
+        clients = cur->next;
       }
 
-      free(tmp);
-      break;
-    }
-    cc = &(*cc)->next;
-  }
+      // change focus
+      if (focused == cur) {
+        focusnext(NULL);
+      }
 
-  Client *first = NULL;
-  for (Client *c = clients; c; c = c->next) {
-    if (c->workspace == current_ws) {
-      first = c;
-      break;
+      free(cur);
+      return;
     }
+    prev = cur;
+    cur = cur->next;
   }
-
-  if (first)
-    focus(first);
-  else {
-    if (focused) {
-      XSetWindowBorder(dpy, focused->win, border_color);
-      focused = NULL;
-    }
-    XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
-  }
-
-  tile();
 }
 
-void handleKeyPress(XKeyPressedEvent *ev) {
-  KeySym keysym = XLookupKeysym(ev, 0);
+void configreq(XEvent *ev) {
+  XConfigureRequestEvent *e = &ev->xconfigurerequest;
+  XWindowChanges wc;
+
+  wc.x = e->x;
+  wc.y = e->y;
+  wc.width = e->width;
+  wc.height = e->height;
+  XConfigureWindow(dpy, e->window, e->value_mask, &wc);
+}
+
+void keypressreq(XEvent *ev) {
+  XKeyPressedEvent *e = &ev->xkey;
+  KeySym keysym = XLookupKeysym(e, 0);
 
   for (int i = 0; i < LEN(keys); i++) {
-    if (keys[i].keysym == keysym && keys[i].mod == (ev->state & (MODKEY | ShiftMask | ControlMask))) {
-      keys[i].func(keys[i].cmd, keys[i].args);
+    if (keys[i].keysym == keysym && keys[i].mod == CLEANMASK(e->state)) {
+      keys[i].func(&keys[i].arg);
     }
   }
 }
@@ -451,28 +255,21 @@ void run() {
   while (1) {
     XNextEvent(dpy, &ev);
     switch (ev.type) {
-      case CreateNotify:
-        break;
       case MapRequest:
-        handleMapReq(&ev.xmaprequest);
-        break;
-      case ConfigureRequest:
-        handleConfigureReq(&ev.xconfigurerequest);
+        mapreq(&ev);
         break;
       case UnmapNotify:
-        handleUnmapReq(ev.xunmap.window);
+        tile();
         break;
       case DestroyNotify:
-        handleDestroyNotify(ev.xdestroywindow.window);
+        destroynoti(&ev);
+        tile();
+        break;
+      case ConfigureRequest:
+        configreq(&ev);
         break;
       case KeyPress:
-        handleKeyPress(&ev.xkey);
-        break;
-      case ClientMessage:
-        handle_net_wm_state(&ev.xclient);
-        break;
-      case EnterNotify:
-        focus(wintoclient(ev.xcrossing.window));
+        keypressreq(&ev);
         break;
     }
   }
@@ -480,12 +277,8 @@ void run() {
 
 int main() {
   init();
-
   grabkeys();
-
   run();
-
-  XCloseDisplay(dpy);
-
+  cleanup();
   return 0;
 }

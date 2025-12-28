@@ -1,7 +1,13 @@
-all: build
+all: moody
 
-build:
+moody: moody.c moody.h config.h
 	gcc -o moody moody.c -lX11
+
+clean:
+	rm -f /usr/local/bin/moody
+
+install:
+	mv ./moody /usr/local/bin
 
 test:
 	Xephyr -ac -screen 1200x800 :1 &
